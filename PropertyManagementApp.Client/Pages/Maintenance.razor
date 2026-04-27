@@ -1,0 +1,131 @@
+﻿@page "/maintenance"
+@using PropertyManagementApp.Shared.DTOs
+@inject HttpClient Http
+
+<h2 class="mb-4">Maintenance Dashboard</h2>
+
+@if (projects == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="dashboard-cards">
+        <div class="card">
+            <h4>Total Projects</h4>
+            <p>@projects.Count</p>
+        </div>
+
+        <div class="card success">
+            <h4>Closed</h4>
+            <p>@projects.Count(x => x.Status == "Closed")</p>
+        </div>
+
+        <div class="card warning">
+            <h4>Active</h4>
+            <p>@projects.Count(x => x.Status != "Closed")</p>
+        </div>
+
+        <div class="card danger">
+            <h4>Total Bids</h4>
+            <p>@projects.Sum(x => x.BidAmount).ToString("C")</p>
+        </div>
+    </div>
+
+    <table class="table modern-table">
+        <thead>
+            <tr>
+                <th>Project</th>
+                <th>Property</th>
+                <th>Vendor</th>
+                <th>Status</th>
+                <th>Bid Amount</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var p in projects)
+            {
+                <tr>
+                    <td>@p.ProjectTitle</td>
+                    <td>@p.PropertyName</td>
+                    <td>@p.AssignedVendor</td>
+
+                    <td>
+                        <span class="badge @GetStatusClass(p.Status)">
+                            @p.Status
+                        </span>
+                    </td>
+
+                    <td>@p.BidAmount.ToString("C")</td>
+
+                    <td>
+                        @if (p.Status == "Closed")
+                        {
+                            <span class="badge badge-success">Complete</span>
+                        }
+                        else
+                        {
+                            <div class="action-buttons">
+                                <a class="action-btn action-reminder"
+                                       href="maintenance/@p.ProjectID">
+                                    View Logs
+                                </a>
+
+                                <button class="action-btn action-reminder"
+                                        @onclick="() => Start(p.ProjectID)">
+                                    Start Work
+                                </button>
+
+                                <button class="action-btn action-paid"
+                                        @onclick="() => Complete(p.ProjectID)">
+                                    Close
+                                </button>
+                            </div>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<MaintenanceProjectDto>? projects;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        projects = await Http.GetFromJsonAsync<List<MaintenanceProjectDto>>("api/maintenance");
+    }
+
+    private async Task Start(int id)
+    {
+        await Http.PostAsync($"api/maintenance/{id}/start", null);
+        await Load();
+    }
+
+    private async Task Complete(int id)
+    {
+        await Http.PostAsync($"api/maintenance/{id}/complete", null);
+        await Load();
+    }
+
+    private string GetStatusClass(string? status)
+    {
+        return status switch
+        {
+            "Closed" => "badge-success",
+            "Work Order" => "badge-warning",
+            "Invoiced" => "badge-warning",
+            "Approved" => "badge-warning",
+            "Bid" => "badge-default",
+            _ => "badge-default"
+        };
+    }
+}

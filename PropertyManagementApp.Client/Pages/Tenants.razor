@@ -1,0 +1,59 @@
+﻿@page "/tenants"
+@using PropertyManagementApp.Shared
+@inject HttpClient Http
+
+<h3>Tenants</h3>
+
+@if (tenants == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Property</th>
+                <th>Unit</th>
+                <th>Ledger</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var tenant in tenants)
+            {
+                <tr>
+                    <td>
+                        <a href="rent-records/tenant/@tenant.TenantID">
+                            @tenant.FirstName @tenant.LastName
+                        </a>
+                    </td>
+
+                    <td>@tenant.Email</td>
+                    <td>@tenant.PhoneNumber</td>
+                    <td>@tenant.PropertyName</td>
+                    <td>@tenant.UnitNumber</td>
+
+                    <td>
+                        <a class="action-btn action-reminder"
+                               href="rent-records/tenant/@tenant.TenantID">
+                            View Ledger
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<TenantDto>? tenants;
+
+    protected override async Task OnInitializedAsync()
+    {
+        tenants = await Http.GetFromJsonAsync<List<TenantDto>>("api/tenants");
+    }
+}

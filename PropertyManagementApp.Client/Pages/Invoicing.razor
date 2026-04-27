@@ -1,0 +1,174 @@
+﻿@page "/invoicing"
+@using PropertyManagementApp.Shared.DTOs
+@inject HttpClient Http
+
+<h2 class="mb-4">Invoicing Dashboard</h2>
+
+@if (invoices == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="dashboard-cards">
+        <div class="card">
+            <h4>Total Invoiced</h4>
+            <p>@TotalInvoiced.ToString("C")</p>
+        </div>
+
+        <div class="card success">
+            <h4>Paid</h4>
+            <p>@TotalPaid.ToString("C")</p>
+        </div>
+
+        <div class="card warning">
+            <h4>Outstanding</h4>
+            <p>@Outstanding.ToString("C")</p>
+        </div>
+
+        <div class="card danger">
+            <h4>Open Invoices</h4>
+            <p>@OpenCount</p>
+        </div>
+    </div>
+
+    <div class="invoice-toolbar">
+        <button class="action-btn action-paid" @onclick="CreateDemoInvoice">
+            + Create Sample Invoice
+        </button>
+    </div>
+
+    <table class="table modern-table">
+        <thead>
+            <tr>
+                <th>Invoice #</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Property</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Exported</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var invoice in invoices)
+            {
+                <tr>
+                    <td>#@invoice.InvoiceID</td>
+                    <td>@invoice.InvoiceDate.ToShortDateString()</td>
+                    <td>@invoice.TenantName</td>
+                    <td>@invoice.PropertyName</td>
+                    <td><b>@invoice.TotalAmount.ToString("C")</b></td>
+
+                    <td>
+                        <span class="badge @GetInvoiceStatusClass(invoice.Status)">
+                            @invoice.Status
+                        </span>
+                    </td>
+
+                    <td>@(invoice.IsExported ? "Yes" : "No")</td>
+
+                    <td>
+                        @if (invoice.Status == "Paid")
+                        {
+                            <span class="badge badge-success">Paid</span>
+                        }
+                        else
+                        {
+                            <div class="action-buttons">
+                                @if (invoice.Status == "Draft")
+                                {
+                                    <button class="action-btn action-reminder"
+                                            @onclick="() => SendInvoice(invoice)">
+                                        Send
+                                    </button>
+                                }
+                                else if (invoice.Status == "Sent")
+                                {
+                                    <span class="badge badge-warning">Sent</span>
+                                }
+
+                                <button class="action-btn action-paid"
+                                        @onclick="() => MarkInvoicePaid(invoice)">
+                                    Mark Paid
+                                </button>
+                            </div>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<InvoiceDto>? invoices;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInvoices();
+    }
+
+    private async Task LoadInvoices()
+    {
+        invoices = await Http.GetFromJsonAsync<List<InvoiceDto>>("api/invoices");
+    }
+
+    private decimal TotalInvoiced => invoices?.Sum(x => x.TotalAmount) ?? 0;
+
+    private decimal TotalPaid =>
+        invoices?.Where(x => x.Status == "Paid").Sum(x => x.TotalAmount) ?? 0;
+
+    private decimal Outstanding =>
+        invoices?.Where(x => x.Status != "Paid").Sum(x => x.TotalAmount) ?? 0;
+
+    private int OpenCount =>
+        invoices?.Count(x => x.Status != "Paid") ?? 0;
+
+    private string GetInvoiceStatusClass(string? status)
+    {
+        return status switch
+        {
+            "Paid" => "badge-success",
+            "Sent" => "badge-warning",
+            "Overdue" => "badge-danger",
+            _ => "badge-default"
+        };
+    }
+
+    private async Task CreateDemoInvoice()
+    {
+        if (invoices != null && invoices.Any(x =>
+            x.TenantName == "Maintenance / General" &&
+            x.TotalAmount == 350 &&
+            x.Status == "Draft"))
+        {
+            return;
+        }
+
+        var dto = new CreateInvoiceDto
+        {
+            ScheduleID = null,
+            ProjectID = null,
+            TotalAmount = 350,
+            Status = "Draft"
+        };
+
+        await Http.PostAsJsonAsync("api/invoices", dto);
+        await LoadInvoices();
+    }
+
+    private async Task SendInvoice(InvoiceDto invoice)
+    {
+        await Http.PostAsync($"api/invoices/{invoice.InvoiceID}/send", null);
+        await LoadInvoices();
+    }
+
+    private async Task MarkInvoicePaid(InvoiceDto invoice)
+    {
+        await Http.PostAsync($"api/invoices/{invoice.InvoiceID}/mark-paid", null);
+        await LoadInvoices();
+    }
+}

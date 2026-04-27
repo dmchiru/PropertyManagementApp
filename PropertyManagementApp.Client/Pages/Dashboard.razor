@@ -1,0 +1,59 @@
+﻿@inject HttpClient Http
+
+@if (summary == null)
+{
+    <p>Loading dashboard metrics...</p>
+}
+else
+{
+    <div class="dashboard-cards">
+        <div class="card">
+            <h4>Tenants</h4>
+            <p>@summary.TotalTenants</p>
+        </div>
+
+        <div class="card warning">
+            <h4>Rent Due</h4>
+            <p>@summary.TotalRentDue.ToString("C")</p>
+        </div>
+
+        <div class="card success">
+            <h4>Total Invoiced</h4>
+            <p>@summary.TotalInvoiced.ToString("C")</p>
+        </div>
+
+        <div class="card danger">
+            <h4>Open Invoices</h4>
+            <p>@summary.OpenInvoices</p>
+        </div>
+
+        <div class="card warning">
+            <h4>Active Maintenance</h4>
+            <p>@summary.ActiveMaintenance</p>
+        </div>
+
+        <div class="card danger">
+            <h4>Active Evictions</h4>
+            <p>@summary.ActiveEvictions</p>
+        </div>
+    </div>
+}
+
+@code {
+    private DashboardSummaryDto? summary;
+
+    protected override async Task OnInitializedAsync()
+    {
+        summary = await Http.GetFromJsonAsync<DashboardSummaryDto>("api/dashboard");
+    }
+
+    public class DashboardSummaryDto
+    {
+        public int TotalTenants { get; set; }
+        public decimal TotalRentDue { get; set; }
+        public decimal TotalInvoiced { get; set; }
+        public int ActiveMaintenance { get; set; }
+        public int ActiveEvictions { get; set; }
+        public int OpenInvoices { get; set; }
+    }
+}

@@ -1,0 +1,209 @@
+﻿@page "/eviction-prep"
+@using PropertyManagementApp.Shared.DTOs
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<h2 class="mb-4">Eviction Prep Toolkit</h2>
+
+<div class="legal-warning">
+    This toolkit provides document templates only. It does NOT constitute legal advice.
+    Consult a licensed attorney before initiating eviction proceedings.
+</div>
+
+@if (selectedCase != null)
+{
+    <div class="notice-preview" id="notice-section">
+        <h2>Late Rent Notice</h2>
+
+        <p><strong>Date:</strong> @DateTime.Today.ToShortDateString()</p>
+        <p><strong>Tenant:</strong> @selectedCase.TenantName</p>
+        <p><strong>Property:</strong> @selectedCase.PropertyName</p>
+        <p><strong>Unit:</strong> @selectedCase.UnitNumber</p>
+
+        <p>
+            This notice is to inform you that your rent account is currently past due.
+            Please contact management immediately to resolve the outstanding balance.
+        </p>
+
+        <p><strong>Reason:</strong> @selectedCase.Reason</p>
+
+        <p class="mt-4">
+            This document is generated for record preparation purposes only and does not constitute legal advice.
+        </p>
+    </div>
+
+    <div class="ledger-actions">
+        <button class="action-btn action-paid" @onclick="PrintNotice">
+            Print Notice
+        </button>
+
+        <button class="action-btn action-reminder" @onclick="ClearNotice">
+            Hide Notice
+        </button>
+    </div>
+}
+
+@if (cases == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="dashboard-cards">
+        <div class="card">
+            <h4>Total Cases</h4>
+            <p>@cases.Count</p>
+        </div>
+
+        <div class="card warning">
+            <h4>Active</h4>
+            <p>@cases.Count(x => x.Status == "Active")</p>
+        </div>
+
+        <div class="card success">
+            <h4>Closed</h4>
+            <p>@cases.Count(x => x.Status == "Closed")</p>
+        </div>
+
+        <div class="card danger">
+            <h4>Notices</h4>
+            <p>@cases.Count(x => x.CurrentStep == "Notice Generated")</p>
+        </div>
+    </div>
+
+    <div class="invoice-toolbar">
+        <button class="action-btn action-paid" @onclick="CreateDemoCase">
+            + Open Sample Case
+        </button>
+    </div>
+
+    <table class="table modern-table">
+        <thead>
+            <tr>
+                <th>Case #</th>
+                <th>Tenant</th>
+                <th>Property</th>
+                <th>Unit</th>
+                <th>Reason</th>
+                <th>Step</th>
+                <th>Status</th>
+                <th>Opened</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var item in cases)
+            {
+                <tr>
+                    <td>#@item.CaseID</td>
+                    <td>@item.TenantName</td>
+                    <td>@item.PropertyName</td>
+                    <td>@item.UnitNumber</td>
+                    <td>@item.Reason</td>
+                    <td>@item.CurrentStep</td>
+                    <td>
+                        <span class="badge @GetStatusClass(item.Status)">
+                            @item.Status
+                        </span>
+                    </td>
+                    <td>@item.OpenedAt.ToShortDateString()</td>
+                    <td>
+                        @if (item.Status == "Closed")
+                        {
+                            <span class="badge badge-success">Closed</span>
+                        }
+                        else
+                        {
+                            <div class="action-buttons">
+                                <button class="action-btn action-reminder"
+                                        @onclick="() => GenerateNotice(item)">
+                                    Generate Notice
+                                </button>
+
+                                <button class="action-btn action-fee"
+                                        @onclick="() => PreviewNotice(item)">
+                                    Preview Notice
+                                </button>
+
+                                <button class="action-btn action-paid"
+                                        @onclick="() => CloseCase(item)">
+                                    Close
+                                </button>
+                            </div>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<EvictionCaseDto>? cases;
+    private EvictionCaseDto? selectedCase;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCases();
+    }
+
+    private async Task LoadCases()
+    {
+        cases = await Http.GetFromJsonAsync<List<EvictionCaseDto>>("api/evictioncases");
+    }
+
+    private async Task CreateDemoCase()
+    {
+        if (cases != null && cases.Any(x => x.TenantID == 3 && x.Status == "Active"))
+            return;
+
+        var dto = new CreateEvictionCaseDto
+        {
+            TenantID = 3,
+            Reason = "Late Rent",
+            Notes = "Sample eviction preparation case."
+        };
+
+        await Http.PostAsJsonAsync("api/evictioncases", dto);
+        await LoadCases();
+    }
+
+    private async Task GenerateNotice(EvictionCaseDto item)
+    {
+        await Http.PostAsync($"api/evictioncases/{item.CaseID}/generate-notice", null);
+        selectedCase = item;
+        await LoadCases();
+    }
+
+    private void PreviewNotice(EvictionCaseDto item)
+    {
+        selectedCase = item;
+    }
+
+    private async Task PrintNotice()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    private void ClearNotice()
+    {
+        selectedCase = null;
+    }
+
+    private async Task CloseCase(EvictionCaseDto item)
+    {
+        await Http.PostAsync($"api/evictioncases/{item.CaseID}/close", null);
+        await LoadCases();
+    }
+
+    private string GetStatusClass(string? status)
+    {
+        return status switch
+        {
+            "Closed" => "badge-success",
+            "Active" => "badge-warning",
+            _ => "badge-default"
+        };
+    }
+}

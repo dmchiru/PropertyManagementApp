@@ -1,0 +1,80 @@
+﻿@page "/maintenance/{projectId:int}"
+@using PropertyManagementApp.Shared.DTOs
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<h2>Maintenance Work Logs</h2>
+
+<div class="ledger-actions">
+    <button class="action-btn action-reminder" @onclick="BackToMaintenance">
+        ← Back to Maintenance
+    </button>
+</div>
+
+@if (logs == null)
+{
+    <p>Loading...</p>
+}
+else if (!logs.Any())
+{
+    <p>No work logs found for this project.</p>
+}
+else
+{
+    <table class="table modern-table">
+        <thead>
+            <tr>
+                <th>Clock In</th>
+                <th>Clock Out</th>
+                <th>GPS</th>
+                <th>Photo</th>
+                <th>Materials</th>
+                <th>Signature</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var log in logs)
+            {
+                <tr>
+                    <td>@(log.ClockInTime?.ToString("g") ?? "-")</td>
+                    <td>@(log.ClockOutTime?.ToString("g") ?? "-")</td>
+                    <td>@log.GPSLocation</td>
+
+                    <td>
+                        @if (!string.IsNullOrEmpty(log.ProofPhotoURL) && log.ProofPhotoURL != "NA")
+                        {
+                            <a href="@($"/images/{log.ProofPhotoURL}")" target="_blank">
+                                View Photo
+                            </a>
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </td>
+
+                    <td>@log.MaterialsUsed</td>
+                    <td>@log.VendorSignature</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter]
+    public int projectId { get; set; }
+
+    private List<WorkLogDto>? logs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        logs = await Http.GetFromJsonAsync<List<WorkLogDto>>($"api/worklogs?projectId={projectId}");
+    }
+
+    private void BackToMaintenance()
+    {
+        Navigation.NavigateTo("/maintenance");
+    }
+}
