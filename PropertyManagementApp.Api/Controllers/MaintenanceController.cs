@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using PropertyManagementApp.Api.Services;
+using PropertyManagementApp.Shared.DTOs;
 
 namespace PropertyManagementApp.Api.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/maintenanceprojects")]
     [ApiController]
     public class MaintenanceController : ControllerBase
     {
@@ -17,7 +18,59 @@ namespace PropertyManagementApp.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> Get()
         {
-            return Ok(await _service.GetAllAsync());
+            var projects = await _service.GetAllAsync();
+            return Ok(projects);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var project = await _service.GetByIdAsync(id);
+
+            if (project == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(project);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Create(CreateMaintenanceProjectDto dto)
+        {
+            var createdProject = await _service.CreateAsync(dto);
+
+            return CreatedAtAction(
+                nameof(GetById),
+                new { id = createdProject.ProjectID },
+                createdProject
+            );
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, CreateMaintenanceProjectDto dto)
+        {
+            var updated = await _service.UpdateAsync(id, dto);
+
+            if (!updated)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var deleted = await _service.DeleteAsync(id);
+
+            if (!deleted)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
         }
 
         [HttpPost("{id}/start")]

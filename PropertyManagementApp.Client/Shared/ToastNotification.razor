@@ -1,0 +1,50 @@
+﻿@inject NotificationService Notifications
+@implements IDisposable
+
+@if (message != null)
+{
+    <div class="toast-box @toastClass">
+        @message
+    </div>
+}
+
+@code {
+    private string? message;
+    private string toastClass = "toast-success";
+    private System.Timers.Timer? timer;
+
+    protected override void OnInitialized()
+    {
+        Notifications.OnNotify += Show;
+    }
+
+    private void Show(string msg, string type)
+    {
+        message = msg;
+
+        toastClass = type switch
+        {
+            "danger" => "toast-danger",
+            "info" => "toast-info",
+            _ => "toast-success"
+        };
+
+        StateHasChanged();
+
+        timer?.Dispose();
+        timer = new System.Timers.Timer(3000);
+        timer.Elapsed += (_, _) =>
+        {
+            message = null;
+            InvokeAsync(StateHasChanged);
+            timer?.Dispose();
+        };
+        timer.Start();
+    }
+
+    public void Dispose()
+    {
+        Notifications.OnNotify -= Show;
+        timer?.Dispose();
+    }
+}

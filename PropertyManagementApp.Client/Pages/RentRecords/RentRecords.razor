@@ -1,0 +1,55 @@
+﻿@page "/rent-records"
+@using PropertyManagementApp.Shared
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<h2>Rent Records</h2>
+
+@if (tenants == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table modern-table">
+        <thead>
+            <tr>
+                <th>Tenant</th>
+                <th>Property</th>
+                <th>Unit</th>
+                <th>Ledger</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var t in tenants)
+            {
+                <tr>
+                    <td>@t.FirstName @t.LastName</td>
+                    <td>@t.PropertyName</td>
+                    <td>@t.UnitNumber</td>
+                    <td>
+                        <button class="action-btn action-reminder"
+                                @onclick="() => ViewLedger(t.TenantID)">
+                            View Ledger
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<TenantDto>? tenants;
+
+    protected override async Task OnInitializedAsync()
+    {
+        tenants = await Http.GetFromJsonAsync<List<TenantDto>>("api/tenants");
+    }
+
+    private void ViewLedger(int tenantId)
+    {
+        Navigation.NavigateTo($"/rent-records/tenant/{tenantId}");
+    }
+}

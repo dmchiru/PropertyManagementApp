@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PropertyManagementApp.Api.Data;
+using PropertyManagementApp.Api.Models;
 using PropertyManagementApp.Shared.DTOs;
 
 namespace PropertyManagementApp.Api.Controllers
@@ -36,6 +37,38 @@ namespace PropertyManagementApp.Api.Controllers
                 .ToListAsync();
 
             return Ok(logs);
+        }
+
+        [HttpPost]
+        public async Task<ActionResult<WorkLogDto>> Create(CreateWorkLogDto dto)
+        {
+            var log = new WorkLog
+            {
+                ProjectID = dto.ProjectID,
+                ClockInTime = dto.ClockInTime,
+                ClockOutTime = dto.ClockOutTime,
+                GPSLocation = dto.GPSLocation,
+                ProofPhotoURL = dto.ProofPhotoURL,
+                MaterialsUsed = dto.MaterialsUsed,
+                VendorSignature = dto.VendorSignature
+            };
+
+            _context.WorkLogs.Add(log);
+            await _context.SaveChangesAsync();
+
+            var result = new WorkLogDto
+            {
+                LogID = log.LogID,
+                ProjectID = log.ProjectID,
+                ClockInTime = log.ClockInTime,
+                ClockOutTime = log.ClockOutTime,
+                GPSLocation = log.GPSLocation,
+                ProofPhotoURL = log.ProofPhotoURL,
+                MaterialsUsed = log.MaterialsUsed,
+                VendorSignature = log.VendorSignature
+            };
+
+            return Ok(result);
         }
     }
 }

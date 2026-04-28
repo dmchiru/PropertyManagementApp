@@ -1,6 +1,7 @@
 ﻿@page "/maintenance"
 @using PropertyManagementApp.Shared.DTOs
 @inject HttpClient Http
+@inject NotificationService Notify
 
 <h2 class="mb-4">Maintenance Dashboard</h2>
 
@@ -31,6 +32,41 @@ else
             <p>@projects.Sum(x => x.BidAmount).ToString("C")</p>
         </div>
     </div>
+
+    <div class="invoice-toolbar">
+        <button class="action-btn action-paid" @onclick="ToggleCreate">
+            @(showForm ? "Cancel" : "+ New Maintenance Project")
+        </button>
+    </div>
+
+    @if (showForm)
+    {
+        <div class="card p-3 mb-3">
+            <h4>Create Maintenance Project</h4>
+
+            <input class="form-control mb-2"
+                   placeholder="Project Title"
+                   @bind="newProject.ProjectTitle" />
+
+            <input class="form-control mb-2"
+                   placeholder="Assigned Vendor"
+                   @bind="newProject.AssignedVendor" />
+
+            <input type="number"
+                   class="form-control mb-2"
+                   placeholder="Property ID"
+                   @bind="newProject.PropertyID" />
+
+            <input type="number"
+                   class="form-control mb-2"
+                   placeholder="Bid Amount"
+                   @bind="newProject.BidAmount" />
+
+            <button class="action-btn action-paid" @onclick="CreateProject">
+                Save Project
+            </button>
+        </div>
+    }
 
     <table class="table modern-table">
         <thead>
@@ -69,7 +105,7 @@ else
                         {
                             <div class="action-buttons">
                                 <a class="action-btn action-reminder"
-                                       href="maintenance/@p.ProjectID">
+                                       href="/worklogs/@p.ProjectID">
                                     View Logs
                                 </a>
 
@@ -94,25 +130,72 @@ else
 @code {
     private List<MaintenanceProjectDto>? projects;
 
+    private bool showForm = false;
+
+    private CreateMaintenanceProjectDto newProject = new();
+
     protected override async Task OnInitializedAsync()
     {
-        await Load();
+        try
+        {
+            projects = await Http.GetFromJsonAsync<List<MaintenanceProjectDto>>("api/maintenanceprojects");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
     }
 
     private async Task Load()
     {
-        projects = await Http.GetFromJsonAsync<List<MaintenanceProjectDto>>("api/maintenance");
+        projects = await Http.GetFromJsonAsync<List<MaintenanceProjectDto>>("api/maintenanceprojects");
+    }
+
+    private void ToggleCreate()
+    {
+        showForm = !showForm;
+    }
+
+    private async Task CreateProject()
+    {
+        if (string.IsNullOrWhiteSpace(newProject.ProjectTitle))
+        {
+            Notify.Error("Project title is required.");
+            return;
+        }
+
+        if (newProject.PropertyID <= 0)
+        {
+            Notify.Error("Property ID is required.");
+            return;
+        }
+
+        var response = await Http.PostAsJsonAsync("api/maintenanceprojects", newProject);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Notify.Success("Maintenance project created.");
+            showForm = false;
+            newProject = new CreateMaintenanceProjectDto();
+            await Load();
+        }
+        else
+        {
+            Notify.Error("Failed to create maintenance project.");
+        }
     }
 
     private async Task Start(int id)
     {
-        await Http.PostAsync($"api/maintenance/{id}/start", null);
+        await Http.PostAsync($"api/maintenanceprojects/{id}/start", null);
+        Notify.Success("Project moved to Work Order.");
         await Load();
     }
 
     private async Task Complete(int id)
     {
-        await Http.PostAsync($"api/maintenance/{id}/complete", null);
+        await Http.PostAsync($"api/maintenanceprojects/{id}/complete", null);
+        Notify.Success("Project closed.");
         await Load();
     }
 

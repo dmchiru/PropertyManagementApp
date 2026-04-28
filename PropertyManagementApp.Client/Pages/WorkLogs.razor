@@ -1,0 +1,139 @@
+﻿@page "/worklogs/{projectId:int}"
+@using PropertyManagementApp.Shared.DTOs
+
+@using Microsoft.AspNetCore.Components.Forms
+
+@inject HttpClient Http
+
+@inject IJSRuntime JS
+
+<h3>Work Logs</h3>
+
+@if (logs == null)
+{
+    <p>Loading...</p>
+}
+else if (!logs.Any())
+{
+    <p>No logs found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Clock In</th>
+                <th>Clock Out</th>
+                <th>GPS</th>
+                <th>Materials</th>
+                <th>Photo</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var log in logs)
+            {
+                <tr>
+                    <td>@log.ClockInTime</td>
+                    <td>@log.ClockOutTime</td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(log.GPSLocation))
+                        {
+                            var parts = log.GPSLocation.Split(',');
+                            <span>@($"{double.Parse(parts[0]):0.0000}, {double.Parse(parts[1]):0.0000}")</span>
+                        }
+                    </td>
+                    <td>@log.MaterialsUsed</td>
+
+                    <td>
+                        @if (!string.IsNullOrEmpty(log.ProofPhotoURL))
+                        {
+                            <img src="@log.ProofPhotoURL" style="width:80px; border-radius:8px;" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h4>Add Work Log</h4>
+
+<input @bind="newLog.GPSLocation"
+       placeholder="GPS Location"
+       class="form-control mb-2" />
+
+<button class="btn btn-secondary mb-2" @onclick="GetGPS">
+    Capture GPS
+</button>
+
+<input @bind="newLog.MaterialsUsed"
+       placeholder="Materials used"
+       class="form-control mb-2" />
+
+<InputFile OnChange="HandleFile" class="form-control mb-2" />
+
+@if (!string.IsNullOrEmpty(newLog.ProofPhotoURL))
+{
+    <img src="@newLog.ProofPhotoURL" width="150" class="mb-2" />
+}
+
+<button class="btn btn-primary" @onclick="Save">Save</button>
+
+@code {
+    [Parameter] public int projectId { get; set; }
+
+    List<WorkLogDto>? logs;
+    CreateWorkLogDto newLog = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLogs();
+    }
+
+    async Task LoadLogs()
+    {
+        logs = await Http.GetFromJsonAsync<List<WorkLogDto>>($"api/worklogs?projectId={projectId}");
+    }
+
+    async Task GetGPS()
+    {
+        try
+        {
+            var location = await JS.InvokeAsync<string>("getLocation");
+            newLog.GPSLocation = location;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task Save()
+    {
+        newLog.ProjectID = projectId;
+        newLog.ClockInTime = DateTime.Now;
+        newLog.ClockOutTime = DateTime.Now.AddMinutes(30);
+
+        await Http.PostAsJsonAsync("api/worklogs", newLog);
+
+        newLog = new CreateWorkLogDto();
+        await LoadLogs();
+    }
+
+    IBrowserFile? selectedFile;
+
+    async Task HandleFile(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+
+        using var stream = selectedFile.OpenReadStream(5 * 1024 * 1024);
+        using var ms = new MemoryStream();
+
+        await stream.CopyToAsync(ms);
+
+        var bytes = ms.ToArray();
+        var base64 = Convert.ToBase64String(bytes);
+
+        newLog.ProofPhotoURL = $"data:{selectedFile.ContentType};base64,{base64}";
+    }
+}

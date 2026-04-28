@@ -2,6 +2,9 @@
 @using PropertyManagementApp.Shared.DTOs
 @inject HttpClient Http
 
+@inject NotificationService Notify
+
+
 <h2 class="mb-4">Rent Collection Dashboard</h2>
 
 @if (schedules == null)
@@ -31,13 +34,6 @@ else
             <p>@LateCount</p>
         </div>
     </div>
-
-    @if (message != null)
-    {
-        <div class="alert alert-success">
-            @message
-        </div>
-    }
 
 
 
@@ -148,7 +144,7 @@ else
 
         await Http.PostAsJsonAsync($"api/rentschedules/{schedule.ScheduleID}/mark-paid", payment);
 
-        message = $"{schedule.TenantName} marked as paid.";
+        Notify.Success($"{schedule.TenantName} marked as paid.");
 
         await LoadSchedules();
     }
@@ -156,10 +152,11 @@ else
     private async Task ApplyLateFee(RentScheduleDto schedule)
     {
         await Http.PostAsync($"api/rentschedules/{schedule.ScheduleID}/apply-late-fee", null);
+
+        Notify.Success($"Late fee applied to {schedule.TenantName}.");
+
         await LoadSchedules();
     }
-
-    private string? message;
 
     private async Task SendReminder(RentScheduleDto schedule)
     {
@@ -174,7 +171,7 @@ else
 
         await Http.PostAsJsonAsync("api/communications", dto);
 
-        message = $"Reminder sent to {schedule.TenantName}";
+        Notify.Success($"Reminder sent to {schedule.TenantName}.");
 
         await LoadSchedules();
     }
