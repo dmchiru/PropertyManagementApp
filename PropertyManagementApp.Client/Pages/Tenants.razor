@@ -1,8 +1,13 @@
 ﻿@page "/tenants"
 @using PropertyManagementApp.Shared
 @inject HttpClient Http
+@inject NavigationManager Nav
 
 <h3>Tenants</h3>
+
+<a class="btn btn-primary mb-3" href="/tenants/create">
+    Add Tenant
+</a>
 
 @if (tenants == null)
 {
@@ -19,6 +24,7 @@ else
                 <th>Property</th>
                 <th>Unit</th>
                 <th>Ledger</th>
+                <th>Actions</th>
             </tr>
         </thead>
 
@@ -43,6 +49,18 @@ else
                             View Ledger
                         </a>
                     </td>
+
+                    <td>
+                        <a class="btn btn-sm btn-warning"
+                               href="/tenants/edit/@tenant.TenantID">
+                            Edit
+                        </a>
+
+                        <button class="btn btn-sm btn-danger"
+                                @onclick="() => DeleteTenant(tenant.TenantID)">
+                            Delete
+                        </button>
+                    </td>
                 </tr>
             }
         </tbody>
@@ -54,6 +72,21 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadTenants();
+    }
+
+    private async Task LoadTenants()
+    {
         tenants = await Http.GetFromJsonAsync<List<TenantDto>>("api/tenants");
+    }
+
+    private async Task DeleteTenant(int tenantId)
+    {
+        var response = await Http.DeleteAsync($"api/tenants/{tenantId}");
+
+        if (response.IsSuccessStatusCode)
+        {
+            await LoadTenants();
+        }
     }
 }
