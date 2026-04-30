@@ -1,0 +1,65 @@
+﻿@page "/properties/details/{PropertyID:int}"
+@using PropertyManagementApp.Shared.DTOs
+@inject HttpClient Http
+
+<div class="page-header">
+    <div>
+        <h3>Property Details</h3>
+        <p class="text-muted mb-0">Review property information and assigned unit details.</p>
+    </div>
+
+    <a href="/properties" class="btn btn-outline-secondary btn-sm">
+        Back
+    </a>
+</div>
+
+@if (property == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="compact-details-card">
+        <dl class="row mb-0">
+            <dt class="col-sm-4 text-muted">Property Name</dt>
+            <dd class="col-sm-8 fw-semibold">@property.PropertyName</dd>
+
+            <dt class="col-sm-4 text-muted">Address</dt>
+            <dd class="col-sm-8">@property.Address</dd>
+
+            <dt class="col-sm-4 text-muted">Unit Number</dt>
+            <dd class="col-sm-8">
+                <span class="compact-pill pill-muted">@property.UnitNumber</span>
+            </dd>
+
+            <dt class="col-sm-4 text-muted">Monthly Rent</dt>
+            <dd class="col-sm-8 fw-semibold">@property.MonthlyRent.ToString("C")</dd>
+        </dl>
+    </div>
+
+    <div class="compact-form-actions">
+        <a href="/properties/edit/@property.PropertyID" class="btn btn-primary btn-sm">
+            Edit
+        </a>
+
+        <a href="/properties/delete/@property.PropertyID" class="btn btn-outline-danger btn-sm">
+            Delete
+        </a>
+
+        <a href="/properties" class="btn btn-outline-secondary btn-sm">
+            Back
+        </a>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int PropertyID { get; set; }
+
+    private PropertyDto? property;
+
+    protected override async Task OnInitializedAsync()
+    {
+        property = await Http.GetFromJsonAsync<PropertyDto>($"api/properties/{PropertyID}");
+    }
+}

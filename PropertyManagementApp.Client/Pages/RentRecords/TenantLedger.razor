@@ -3,56 +3,108 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
-<h2>Tenant Ledger</h2>
+<div class="page-header">
+    <div>
+        <h3>Tenant Ledger</h3>
+        <p class="text-muted mb-0">View charges, payments, and running balance for this tenant.</p>
+    </div>
 
-<div class="ledger-actions">
-    <button class="action-btn action-reminder" @onclick="BackToTenants">
-        ← Back to Tenants
-    </button>
+    <div class="compact-action-group">
+        <button class="btn btn-sm btn-outline-secondary compact-action" @onclick="BackToRentRecords">
+            Back
+        </button>
 
-    <button class="action-btn action-paid" @onclick="PrintStatement">
-        Print Statement
-    </button>
+        <button class="btn btn-sm btn-outline-primary compact-action" @onclick="PrintStatement">
+            Print
+        </button>
 
-    <button class="action-btn action-fee" @onclick="ExportCsv">
-        Export CSV
-    </button>
+        <button class="btn btn-sm btn-outline-success compact-action" @onclick="ExportCsv">
+            Export CSV
+        </button>
+    </div>
 </div>
 
 @if (records == null)
 {
-    <p>Loading...</p>
+    <p><em>Loading...</em></p>
 }
 else if (!records.Any())
 {
-    <p>No records found.</p>
+    <div class="alert alert-info">
+        No ledger records found.
+    </div>
 }
 else
 {
-    <table class="table modern-table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Charge</th>
-                <th>Payment</th>
-                <th>Balance</th>
-            </tr>
-        </thead>
+    <div class="dashboard-cards compact-dashboard-cards">
+        <div class="card">
+            <h4>Total Charges</h4>
+            <p>@TotalCharges.ToString("C")</p>
+        </div>
 
-        <tbody>
-            @foreach (var r in records)
-            {
+        <div class="card success">
+            <h4>Total Payments</h4>
+            <p>@TotalPayments.ToString("C")</p>
+        </div>
+
+        <div class="card warning">
+            <h4>Balance</h4>
+            <p>@CurrentBalance.ToString("C")</p>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+            <thead>
                 <tr>
-                    <td>@r.Date.ToShortDateString()</td>
-                    <td>@r.Description</td>
-                    <td>@(r.Charge > 0 ? r.Charge.ToString("C") : "-")</td>
-                    <td>@(r.Payment > 0 ? r.Payment.ToString("C") : "-")</td>
-                    <td><b>@r.Balance.ToString("C")</b></td>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Charge</th>
+                    <th>Payment</th>
+                    <th>Balance</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+
+            <tbody>
+                @foreach (var record in records)
+                {
+                    <tr>
+                        <td>@record.Date.ToShortDateString()</td>
+
+                        <td class="fw-semibold">
+                            @record.Description
+                        </td>
+
+                        <td>
+                            @if (record.Charge > 0)
+                            {
+                                <span>@record.Charge.ToString("C")</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+
+                        <td>
+                            @if (record.Payment > 0)
+                            {
+                                <span class="text-success fw-semibold">@record.Payment.ToString("C")</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+
+                        <td class="fw-semibold">
+                            @record.Balance.ToString("C")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }
 
 @code {
@@ -61,14 +113,18 @@ else
 
     private List<LedgerRow>? records;
 
+    private decimal TotalCharges => records?.Sum(record => record.Charge) ?? 0;
+    private decimal TotalPayments => records?.Sum(record => record.Payment) ?? 0;
+    private decimal CurrentBalance => records?.LastOrDefault()?.Balance ?? 0;
+
     protected override async Task OnInitializedAsync()
     {
-        records = await Http.GetFromJsonAsync<List<LedgerRow>>($"api/rentrecords/{tenantId}");
+        records = await Http.GetFromJsonAsync<List<LedgerRow>>($"api/rentrecords/{tenantId}") ?? new();
     }
 
-    private void BackToTenants()
+    private void BackToRentRecords()
     {
-        Navigation.NavigateTo("/tenants");
+        Navigation.NavigateTo("/rent-records");
     }
 
     private async Task PrintStatement()
@@ -79,13 +135,15 @@ else
     private async Task ExportCsv()
     {
         if (records == null || !records.Any())
+        {
             return;
+        }
 
         var csv = "Date,Description,Charge,Payment,Balance\n";
 
-        foreach (var r in records)
+        foreach (var record in records)
         {
-            csv += $"{r.Date:yyyy-MM-dd},\"{r.Description}\",{r.Charge},{r.Payment},{r.Balance}\n";
+            csv += $"{record.Date:yyyy-MM-dd},\"{record.Description}\",{record.Charge},{record.Payment},{record.Balance}\n";
         }
 
         await JS.InvokeVoidAsync("downloadFile", $"tenant-ledger-{tenantId}.csv", csv);

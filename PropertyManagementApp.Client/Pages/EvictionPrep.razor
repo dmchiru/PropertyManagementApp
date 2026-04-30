@@ -1,63 +1,38 @@
 ﻿@page "/eviction-prep"
-@using PropertyManagementApp.Shared.DTOs
 @inject HttpClient Http
-@inject IJSRuntime JS
+@inject NotificationService Notify
 
-<h2 class="mb-4">Eviction Prep Toolkit</h2>
+<div class="page-header">
+    <div>
+        <h3>Eviction Prep</h3>
+        <p class="text-muted mb-0">Track eviction cases, notices, timelines, and document preparation.</p>
+    </div>
 
-<div class="legal-warning">
-    This toolkit provides document templates only. It does NOT constitute legal advice.
-    Consult a licensed attorney before initiating eviction proceedings.
+    <button class="btn btn-primary btn-sm" @onclick="ToggleCreate">
+        @(showForm ? "Cancel" : "Start Case")
+    </button>
 </div>
 
-@if (selectedCase != null)
+<div class="alert alert-warning py-2">
+    <strong>Legal Disclaimer:</strong>
+    This toolkit provides document templates and process guidance only. It is not legal advice.
+</div>
+
+@if (cases == null || tenants == null)
 {
-    <div class="notice-preview" id="notice-section">
-        <h2>Late Rent Notice</h2>
-
-        <p><strong>Date:</strong> @DateTime.Today.ToShortDateString()</p>
-        <p><strong>Tenant:</strong> @selectedCase.TenantName</p>
-        <p><strong>Property:</strong> @selectedCase.PropertyName</p>
-        <p><strong>Unit:</strong> @selectedCase.UnitNumber</p>
-
-        <p>
-            This notice is to inform you that your rent account is currently past due.
-            Please contact management immediately to resolve the outstanding balance.
-        </p>
-
-        <p><strong>Reason:</strong> @selectedCase.Reason</p>
-
-        <p class="mt-4">
-            This document is generated for record preparation purposes only and does not constitute legal advice.
-        </p>
-    </div>
-
-    <div class="ledger-actions">
-        <button class="action-btn action-paid" @onclick="PrintNotice">
-            Print Notice
-        </button>
-
-        <button class="action-btn action-reminder" @onclick="ClearNotice">
-            Hide Notice
-        </button>
-    </div>
-}
-
-@if (cases == null)
-{
-    <p>Loading...</p>
+    <p><em>Loading...</em></p>
 }
 else
 {
-    <div class="dashboard-cards">
+    <div class="dashboard-cards compact-dashboard-cards">
         <div class="card">
             <h4>Total Cases</h4>
             <p>@cases.Count</p>
         </div>
 
         <div class="card warning">
-            <h4>Active</h4>
-            <p>@cases.Count(x => x.Status == "Active")</p>
+            <h4>Open</h4>
+            <p>@cases.Count(x => x.Status != "Closed")</p>
         </div>
 
         <div class="card success">
@@ -66,144 +41,280 @@ else
         </div>
 
         <div class="card danger">
-            <h4>Notices</h4>
-            <p>@cases.Count(x => x.CurrentStep == "Notice Generated")</p>
+            <h4>Late Rent</h4>
+            <p>@cases.Count(x => x.Reason == "Late Rent")</p>
         </div>
     </div>
 
-    <div class="invoice-toolbar">
-        <button class="action-btn action-paid" @onclick="CreateDemoCase">
-            + Open Sample Case
-        </button>
+    @if (showForm)
+    {
+        <div class="compact-search-card">
+            <h5 class="mb-3">Start New Eviction Case</h5>
+
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Tenant</label>
+                    <select class="form-select form-select-sm" @bind="newCase.TenantID">
+                        <option value="0">Choose a tenant</option>
+
+                        @foreach (var tenant in tenants)
+                        {
+                            <option value="@tenant.TenantID">
+                                @tenant.FirstName @tenant.LastName - @tenant.PropertyName Unit @tenant.UnitNumber
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Reason</label>
+                    <select class="form-select form-select-sm" @bind="newCase.Reason">
+                        <option value="">Choose a reason</option>
+                        <option value="Late Rent">Late Rent</option>
+                        <option value="Lease Violation">Lease Violation</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-3 d-flex gap-2">
+                <button class="btn btn-success btn-sm" @onclick="CreateCase">
+                    Save Case
+                </button>
+
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ToggleCreate">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    }
+
+    <div class="compact-search-card">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-8">
+                <label class="form-label fw-semibold">Search Cases</label>
+                <input class="form-control form-control-sm"
+                       placeholder="Search by tenant, property, reason, status, or current step..."
+                       @bind="searchText"
+                       @bind:event="oninput" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Status Filter</label>
+                <select class="form-select form-select-sm" @bind="statusFilter">
+                    <option value="">All statuses</option>
+                    <option value="Open">Open</option>
+                    <option value="Closed">Closed</option>
+                    <option value="In Progress">In Progress</option>
+                </select>
+            </div>
+        </div>
     </div>
 
-    <table class="table modern-table">
-        <thead>
-            <tr>
-                <th>Case #</th>
-                <th>Tenant</th>
-                <th>Property</th>
-                <th>Unit</th>
-                <th>Reason</th>
-                <th>Step</th>
-                <th>Status</th>
-                <th>Opened</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
+    @if (!FilteredCases.Any())
+    {
+        <div class="alert alert-info">
+            No eviction cases found.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Case ID</th>
+                        <th>Tenant</th>
+                        <th>Property</th>
+                        <th>Reason</th>
+                        <th>Current Step</th>
+                        <th>Status</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
 
-        <tbody>
-            @foreach (var item in cases)
-            {
-                <tr>
-                    <td>#@item.CaseID</td>
-                    <td>@item.TenantName</td>
-                    <td>@item.PropertyName</td>
-                    <td>@item.UnitNumber</td>
-                    <td>@item.Reason</td>
-                    <td>@item.CurrentStep</td>
-                    <td>
-                        <span class="badge @GetStatusClass(item.Status)">
-                            @item.Status
-                        </span>
-                    </td>
-                    <td>@item.OpenedAt.ToShortDateString()</td>
-                    <td>
-                        @if (item.Status == "Closed")
-                        {
-                            <span class="badge badge-success">Closed</span>
-                        }
-                        else
-                        {
-                            <div class="action-buttons">
-                                <button class="action-btn action-reminder"
-                                        @onclick="() => GenerateNotice(item)">
-                                    Generate Notice
-                                </button>
+                <tbody>
+                    @foreach (var evictionCase in FilteredCases)
+                    {
+                        <tr>
+                            <td class="fw-semibold">#@evictionCase.CaseID</td>
+                            <td class="fw-semibold">@evictionCase.TenantName</td>
+                            <td>@evictionCase.PropertyName</td>
 
-                                <button class="action-btn action-fee"
-                                        @onclick="() => PreviewNotice(item)">
-                                    Preview Notice
-                                </button>
+                            <td>
+                                <span class="compact-pill pill-dark">@evictionCase.Reason</span>
+                            </td>
 
-                                <button class="action-btn action-paid"
-                                        @onclick="() => CloseCase(item)">
-                                    Close
-                                </button>
-                            </div>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                            <td>@evictionCase.CurrentStep</td>
+
+                            <td>
+                                <span class="compact-pill @GetStatusClass(evictionCase.Status)">
+                                    @evictionCase.Status
+                                </span>
+                            </td>
+
+                            <td>
+                                <div class="compact-action-group">
+                                    <button class="btn btn-sm btn-outline-primary compact-action"
+                                            @onclick="() => AdvanceCase(evictionCase.CaseID)">
+                                        Advance
+                                    </button>
+
+                                    @if (evictionCase.Status != "Closed")
+                                    {
+                                        <button class="btn btn-sm btn-outline-success compact-action"
+                                                @onclick="() => CloseCase(evictionCase.CaseID)">
+                                            Close
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-secondary compact-action" disabled>
+                                            Closed
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 }
 
 @code {
     private List<EvictionCaseDto>? cases;
-    private EvictionCaseDto? selectedCase;
+    private List<TenantDto>? tenants;
+
+    private string searchText = string.Empty;
+    private string statusFilter = string.Empty;
+    private bool showForm;
+
+    private CreateEvictionCaseDto newCase = new();
+
+    private IEnumerable<EvictionCaseDto> FilteredCases
+    {
+        get
+        {
+            if (cases == null)
+            {
+                return Enumerable.Empty<EvictionCaseDto>();
+            }
+
+            var query = cases.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                query = query.Where(item =>
+                    string.Equals(item.Status, statusFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                query = query.Where(item =>
+                    ContainsText(item.TenantName) ||
+                    ContainsText(item.PropertyName) ||
+                    ContainsText(item.Reason) ||
+                    ContainsText(item.Status) ||
+                    ContainsText(item.CurrentStep));
+            }
+
+            return query;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadCases();
+        await LoadData();
     }
 
-    private async Task LoadCases()
+    private async Task LoadData()
     {
-        cases = await Http.GetFromJsonAsync<List<EvictionCaseDto>>("api/evictioncases");
+        cases = await Http.GetFromJsonAsync<List<EvictionCaseDto>>("api/evictioncases") ?? new();
+        tenants = await Http.GetFromJsonAsync<List<TenantDto>>("api/tenants") ?? new();
     }
 
-    private async Task CreateDemoCase()
+    private void ToggleCreate()
     {
-        if (cases != null && cases.Any(x => x.TenantID == 3 && x.Status == "Active"))
-            return;
+        showForm = !showForm;
+    }
 
-        var dto = new CreateEvictionCaseDto
+    private async Task CreateCase()
+    {
+        if (newCase.TenantID <= 0)
         {
-            TenantID = 3,
-            Reason = "Late Rent",
-            Notes = "Sample eviction preparation case."
-        };
+            Notify.Error("Please choose a tenant.");
+            return;
+        }
 
-        await Http.PostAsJsonAsync("api/evictioncases", dto);
-        await LoadCases();
+        if (string.IsNullOrWhiteSpace(newCase.Reason))
+        {
+            Notify.Error("Please choose a reason.");
+            return;
+        }
+
+        var response = await Http.PostAsJsonAsync("api/evictioncases", newCase);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Notify.Success("Eviction case created.");
+
+            showForm = false;
+            newCase = new CreateEvictionCaseDto();
+
+            await LoadData();
+        }
+        else
+        {
+            Notify.Error("Failed to create eviction case.");
+        }
     }
 
-    private async Task GenerateNotice(EvictionCaseDto item)
+    private async Task AdvanceCase(int caseId)
     {
-        await Http.PostAsync($"api/evictioncases/{item.CaseID}/generate-notice", null);
-        selectedCase = item;
-        await LoadCases();
+        var response = await Http.PostAsync($"api/evictioncases/{caseId}/advance", null);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Notify.Success("Eviction case advanced.");
+            await LoadData();
+        }
+        else
+        {
+            Notify.Error("Failed to advance eviction case.");
+        }
     }
 
-    private void PreviewNotice(EvictionCaseDto item)
+    private async Task CloseCase(int caseId)
     {
-        selectedCase = item;
-    }
+        var response = await Http.PostAsync($"api/evictioncases/{caseId}/close", null);
 
-    private async Task PrintNotice()
-    {
-        await JS.InvokeVoidAsync("window.print");
-    }
-
-    private void ClearNotice()
-    {
-        selectedCase = null;
-    }
-
-    private async Task CloseCase(EvictionCaseDto item)
-    {
-        await Http.PostAsync($"api/evictioncases/{item.CaseID}/close", null);
-        await LoadCases();
+        if (response.IsSuccessStatusCode)
+        {
+            Notify.Success("Eviction case closed.");
+            await LoadData();
+        }
+        else
+        {
+            Notify.Error("Failed to close eviction case.");
+        }
     }
 
     private string GetStatusClass(string? status)
     {
         return status switch
         {
-            "Closed" => "badge-success",
-            "Active" => "badge-warning",
-            _ => "badge-default"
+            "Closed" => "pill-success",
+            "Open" => "pill-warning",
+            "In Progress" => "pill-dark",
+            _ => "pill-muted"
         };
+    }
+
+    private bool ContainsText(string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value) &&
+               value.Contains(searchText, StringComparison.OrdinalIgnoreCase);
     }
 }

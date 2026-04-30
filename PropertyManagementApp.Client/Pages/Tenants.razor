@@ -1,92 +1,152 @@
 ﻿@page "/tenants"
 @using PropertyManagementApp.Shared
+@using PropertyManagementApp.Shared.DTOs
 @inject HttpClient Http
-@inject NavigationManager Nav
 
-<h3>Tenants</h3>
+<div class="page-header">
+    <div>
+        <h3>Tenants</h3>
+        <p class="text-muted mb-0">Manage tenant records, assigned units, and ledger access.</p>
+    </div>
 
-<a class="btn btn-primary mb-3" href="/tenants/create">
-    Add Tenant
-</a>
+    <a class="btn btn-primary btn-sm" href="/tenants/create">
+        Add Tenant
+    </a>
+</div>
+
+<div class="tenant-search-card">
+    <input class="form-control form-control-sm"
+           placeholder="Search by name, email, phone, property, or unit..."
+           @bind="searchText"
+           @bind:event="oninput" />
+</div>
 
 @if (tenants == null)
 {
     <p><em>Loading...</em></p>
 }
+else if (!FilteredTenants.Any())
+{
+    <div class="alert alert-info">
+        No tenants found.
+    </div>
+}
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Property</th>
-                <th>Unit</th>
-                <th>Ledger</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-
-        <tbody>
-            @foreach (var tenant in tenants)
-            {
+    <div class="table-responsive">
+        <table class="table table-sm table-hover compact-table">
+            <thead>
                 <tr>
-                    <td>
-                        <a href="rent-records/tenant/@tenant.TenantID">
-                            @tenant.FirstName @tenant.LastName
-                        </a>
-                    </td>
-
-                    <td>@tenant.Email</td>
-                    <td>@tenant.PhoneNumber</td>
-                    <td>@tenant.PropertyName</td>
-                    <td>@tenant.UnitNumber</td>
-
-                    <td>
-                        <a class="action-btn action-reminder"
-                               href="rent-records/tenant/@tenant.TenantID">
-                            View Ledger
-                        </a>
-                    </td>
-
-                    <td>
-                        <a class="btn btn-sm btn-warning"
-                               href="/tenants/edit/@tenant.TenantID">
-                            Edit
-                        </a>
-
-                        <button class="btn btn-sm btn-danger"
-                                @onclick="() => DeleteTenant(tenant.TenantID)">
-                            Delete
-                        </button>
-                    </td>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Property</th>
+                    <th>Unit</th>
+                    <th>Ledger</th>
+                    <th class="text-center">Actions</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+
+            <tbody>
+                @foreach (var tenant in FilteredTenants)
+                {
+                    <tr>
+                        <td class="fw-semibold">
+                            @tenant.FirstName @tenant.LastName
+                        </td>
+
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(tenant.Email))
+                            {
+                                <a href="mailto:@tenant.Email">@tenant.Email</a>
+                            }
+                        </td>
+
+                        <td>@tenant.PhoneNumber</td>
+
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(tenant.PropertyName))
+                            {
+                                <span class="compact-pill pill-dark">@tenant.PropertyName</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">N/A</span>
+                            }
+                        </td>
+
+                        <td>
+                            <span class="compact-pill pill-muted">@tenant.UnitNumber</span>
+                        </td>
+
+                        <td>
+                            <a class="btn btn-sm btn-outline-secondary compact-action"
+                                   href="rent-records/tenant/@tenant.TenantID">
+                                Ledger
+                            </a>
+                        </td>
+
+                        <td>
+                            <div class="compact-action-group">
+                                <a class="btn btn-sm btn-outline-info compact-action"
+                                       href="/tenants/details/@tenant.TenantID">
+                                    Details
+                                </a>
+
+                                <a class="btn btn-sm btn-outline-primary compact-action"
+                                       href="/tenants/edit/@tenant.TenantID">
+                                    Edit
+                                </a>
+
+                                <a class="btn btn-sm btn-outline-danger compact-action"
+                                       href="/tenants/delete/@tenant.TenantID">
+                                    Delete
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }
 
 @code {
     private List<TenantDto>? tenants;
+    private string searchText = string.Empty;
+
+    private IEnumerable<TenantDto> FilteredTenants
+    {
+        get
+        {
+            if (tenants == null)
+            {
+                return Enumerable.Empty<TenantDto>();
+            }
+
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                return tenants;
+            }
+
+            return tenants.Where(tenant =>
+                ContainsText(tenant.FirstName) ||
+                ContainsText(tenant.LastName) ||
+                ContainsText(tenant.Email) ||
+                ContainsText(tenant.PhoneNumber) ||
+                ContainsText(tenant.PropertyName) ||
+                ContainsText(tenant.UnitNumber));
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadTenants();
+        tenants = await Http.GetFromJsonAsync<List<TenantDto>>("api/tenants") ?? new();
     }
 
-    private async Task LoadTenants()
+    private bool ContainsText(string? value)
     {
-        tenants = await Http.GetFromJsonAsync<List<TenantDto>>("api/tenants");
-    }
-
-    private async Task DeleteTenant(int tenantId)
-    {
-        var response = await Http.DeleteAsync($"api/tenants/{tenantId}");
-
-        if (response.IsSuccessStatusCode)
-        {
-            await LoadTenants();
-        }
+        return !string.IsNullOrWhiteSpace(value) &&
+               value.Contains(searchText, StringComparison.OrdinalIgnoreCase);
     }
 }

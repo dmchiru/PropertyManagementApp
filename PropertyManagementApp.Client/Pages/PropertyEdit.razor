@@ -1,0 +1,164 @@
+﻿@page "/properties/edit/{PropertyID:int}"
+@using PropertyManagementApp.Shared.DTOs
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject NotificationService Notify
+
+<div class="page-header">
+    <div>
+        <h3>Edit Property</h3>
+        <p class="text-muted mb-0">Update property information, unit number, and rent amount.</p>
+    </div>
+
+    <a href="/properties" class="btn btn-outline-secondary btn-sm">
+        Back
+    </a>
+</div>
+
+@if (property == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger py-2">
+            @errorMessage
+        </div>
+    }
+
+    <div class="compact-form-card">
+        <EditForm Model="property" OnValidSubmit="UpdatePropertyAsync">
+            <DataAnnotationsValidator />
+
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Property Name</label>
+                    <InputText class="form-control form-control-sm"
+                               @bind-Value="property.PropertyName" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Unit Number</label>
+                    <InputText class="form-control form-control-sm"
+                               @bind-Value="property.UnitNumber" />
+                </div>
+
+                <div class="col-md-8">
+                    <label class="form-label fw-semibold">Address</label>
+                    <InputText class="form-control form-control-sm"
+                               @bind-Value="property.Address" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Monthly Rent</label>
+                    <InputNumber class="form-control form-control-sm"
+                                 @bind-Value="property.MonthlyRent" />
+                </div>
+            </div>
+
+            <div class="compact-form-actions">
+                <button type="submit" class="btn btn-primary btn-sm" disabled="@isSaving">
+                    @(isSaving ? "Saving..." : "Save Changes")
+                </button>
+
+                <a href="/properties" class="btn btn-outline-secondary btn-sm">
+                    Cancel
+                </a>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int PropertyID { get; set; }
+
+    private PropertyDto? property;
+    private string? errorMessage;
+    private bool isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        property = await Http.GetFromJsonAsync<PropertyDto>($"api/properties/{PropertyID}");
+    }
+
+    private async Task UpdatePropertyAsync()
+    {
+        if (property == null)
+        {
+            return;
+        }
+
+        errorMessage = ValidateProperty();
+
+        if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"api/properties/{PropertyID}", property);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Notify.Success("Property updated successfully.");
+                Nav.NavigateTo("/properties");
+                return;
+            }
+
+            errorMessage = await GetErrorMessageAsync(response);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating property: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private string? ValidateProperty()
+    {
+        if (property == null)
+        {
+            return "Property could not be loaded.";
+        }
+
+        if (string.IsNullOrWhiteSpace(property.PropertyName))
+        {
+            return "Property name is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(property.Address))
+        {
+            return "Address is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(property.UnitNumber))
+        {
+            return "Unit number is required.";
+        }
+
+        if (property.MonthlyRent <= 0)
+        {
+            return "Monthly rent must be greater than zero.";
+        }
+
+        return null;
+    }
+
+    private async Task<string> GetErrorMessageAsync(HttpResponseMessage response)
+    {
+        var content = await response.Content.ReadAsStringAsync();
+
+        return string.IsNullOrWhiteSpace(content)
+            ? "The property could not be saved."
+            : content;
+    }
+}

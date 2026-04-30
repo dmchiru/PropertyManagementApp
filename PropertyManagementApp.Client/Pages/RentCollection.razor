@@ -1,19 +1,22 @@
 ﻿@page "/rent-collection"
 @using PropertyManagementApp.Shared.DTOs
 @inject HttpClient Http
-
 @inject NotificationService Notify
 
-
-<h2 class="mb-4">Rent Collection Dashboard</h2>
+<div class="page-header">
+    <div>
+        <h3>Rent Collection</h3>
+        <p class="text-muted mb-0">Track rent schedules, balances, late fees, and tenant reminders.</p>
+    </div>
+</div>
 
 @if (schedules == null)
 {
-    <p>Loading...</p>
+    <p><em>Loading...</em></p>
 }
 else
 {
-    <div class="dashboard-cards">
+    <div class="dashboard-cards compact-dashboard-cards">
         <div class="card">
             <h4>Total Due</h4>
             <p>@TotalDue.ToString("C")</p>
@@ -35,77 +38,155 @@ else
         </div>
     </div>
 
+    <div class="compact-search-card">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-8">
+                <label class="form-label fw-semibold">Search Rent Schedule</label>
+                <input class="form-control form-control-sm"
+                       placeholder="Search by tenant, property, unit, or status..."
+                       @bind="searchText"
+                       @bind:event="oninput" />
+            </div>
 
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Status Filter</label>
+                <select class="form-select form-select-sm" @bind="statusFilter">
+                    <option value="">All statuses</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Unpaid">Unpaid</option>
+                    <option value="Partial">Partial</option>
+                    <option value="Late">Late</option>
+                </select>
+            </div>
+        </div>
+    </div>
 
-    <table class="table modern-table">
-        <thead>
-            <tr>
-                <th>Tenant</th>
-                <th>Property</th>
-                <th>Unit</th>
-                <th>Due</th>
-                <th>Status</th>
-                <th>Rent</th>
-                <th>Late Fee</th>
-                <th>Paid</th>
-                <th>Balance</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
+    @if (!FilteredSchedules.Any())
+    {
+        <div class="alert alert-info">
+            No rent schedules found.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Tenant</th>
+                        <th>Property</th>
+                        <th>Unit</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Rent</th>
+                        <th>Late Fee</th>
+                        <th>Paid</th>
+                        <th>Balance</th>
+                        <th>Reminders</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
 
-        <tbody>
-            @foreach (var s in schedules)
-            {
-                <tr>
-                    <td>@s.TenantName</td>
-                    <td>@s.PropertyName</td>
-                    <td>@s.UnitNumber</td>
-                    <td>@s.DueDate.ToShortDateString()</td>
+                <tbody>
+                    @foreach (var schedule in FilteredSchedules)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@schedule.TenantName</td>
+                            <td>@schedule.PropertyName</td>
 
-                    <td>
-                        <span class="badge @GetStatusClass(s.Status)">
-                            @s.Status
-                        </span>
-                    </td>
+                            <td>
+                                <span class="compact-pill pill-muted">@schedule.UnitNumber</span>
+                            </td>
 
-                    <td>@s.BaseRent.ToString("C")</td>
-                    <td>@s.LateFeeAccrued.ToString("C")</td>
-                    <td>@s.AmountPaid.ToString("C")</td>
-                    <td><b>@s.Balance.ToString("C")</b></td>
+                            <td>@schedule.DueDate.ToShortDateString()</td>
 
-                    <td>
-                        @if (s.Status == "Paid")
-                        {
-                            <span class="badge badge-success">Complete</span>
-                        }
-                        else
-                        {
-                            <div class="action-buttons">
-                                <button class="action-btn action-paid"
-                                        @onclick="() => MarkPaid(s)">
-                                    Mark Paid
-                                </button>
+                            <td>
+                                <span class="compact-pill @GetStatusClass(schedule.Status)">
+                                    @schedule.Status
+                                </span>
+                            </td>
 
-                                <button class="action-btn action-fee"
-                                        @onclick="() => ApplyLateFee(s)">
-                                    Late Fee
-                                </button>
+                            <td>@schedule.BaseRent.ToString("C")</td>
+                            <td>@schedule.LateFeeAccrued.ToString("C")</td>
+                            <td>@schedule.AmountPaid.ToString("C")</td>
 
-                                <button class="action-btn action-reminder"
-                                        @onclick="() => SendReminder(s)">
-                                    Reminder
-                                </button>
-                            </div>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                            <td class="fw-semibold">
+                                @schedule.Balance.ToString("C")
+                            </td>
+
+                            <td>
+                                <span class="compact-pill pill-dark">@schedule.ReminderCount</span>
+                            </td>
+
+                            <td>
+                                <div class="compact-action-group">
+                                    @if (schedule.Status == "Paid")
+                                    {
+                                        <button class="btn btn-sm btn-secondary compact-action" disabled>
+                                            Complete
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-success compact-action"
+                                                @onclick="() => MarkPaid(schedule)">
+                                            Mark Paid
+                                        </button>
+
+                                        <button class="btn btn-sm btn-outline-warning compact-action"
+                                                @onclick="() => ApplyLateFee(schedule)">
+                                            Late Fee
+                                        </button>
+
+                                        <button class="btn btn-sm btn-outline-primary compact-action"
+                                                @onclick="() => SendReminder(schedule)">
+                                            Reminder
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 }
 
 @code {
     private List<RentScheduleDto>? schedules;
+    private string searchText = string.Empty;
+    private string statusFilter = string.Empty;
+
+    private IEnumerable<RentScheduleDto> FilteredSchedules
+    {
+        get
+        {
+            if (schedules == null)
+            {
+                return Enumerable.Empty<RentScheduleDto>();
+            }
+
+            var query = schedules.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                query = query.Where(schedule =>
+                    string.Equals(schedule.Status, statusFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                query = query.Where(schedule =>
+                    ContainsText(schedule.TenantName) ||
+                    ContainsText(schedule.PropertyName) ||
+                    ContainsText(schedule.UnitNumber) ||
+                    ContainsText(schedule.Status));
+            }
+
+            return query;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -114,27 +195,37 @@ else
 
     private async Task LoadSchedules()
     {
-        schedules = await Http.GetFromJsonAsync<List<RentScheduleDto>>("api/rentschedules");
+        schedules = await Http.GetFromJsonAsync<List<RentScheduleDto>>("api/rentschedules") ?? new();
     }
 
-    private decimal TotalDue => schedules?.Sum(x => x.BaseRent + x.LateFeeAccrued) ?? 0;
-    private decimal TotalPaid => schedules?.Sum(x => x.AmountPaid) ?? 0;
-    private decimal Outstanding => schedules?.Sum(x => x.Balance) ?? 0;
-    private int LateCount => schedules?.Count(x => x.Status == "Late") ?? 0;
+    private decimal TotalDue => schedules?.Sum(schedule => schedule.BaseRent + schedule.LateFeeAccrued) ?? 0;
+
+    private decimal TotalPaid => schedules?.Sum(schedule => schedule.AmountPaid) ?? 0;
+
+    private decimal Outstanding => schedules?.Sum(schedule => schedule.Balance) ?? 0;
+
+    private int LateCount => schedules?.Count(schedule => schedule.Status == "Late") ?? 0;
 
     private string GetStatusClass(string? status)
     {
         return status switch
         {
-            "Paid" => "badge-success",
-            "Late" => "badge-danger",
-            "Partial" => "badge-warning",
-            _ => "badge-default"
+            "Paid" => "pill-success",
+            "Late" => "pill-warning",
+            "Partial" => "pill-warning",
+            "Unpaid" => "pill-dark",
+            _ => "pill-muted"
         };
     }
 
     private async Task MarkPaid(RentScheduleDto schedule)
     {
+        if (schedule.Balance <= 0)
+        {
+            Notify.Error("This rent schedule does not have an outstanding balance.");
+            return;
+        }
+
         var payment = new MarkPaidDto
         {
             AmountPaid = schedule.Balance,
@@ -142,20 +233,32 @@ else
             TransactionRef = "Manual dashboard payment"
         };
 
-        await Http.PostAsJsonAsync($"api/rentschedules/{schedule.ScheduleID}/mark-paid", payment);
+        var response = await Http.PostAsJsonAsync($"api/rentschedules/{schedule.ScheduleID}/mark-paid", payment);
 
-        Notify.Success($"{schedule.TenantName} marked as paid.");
-
-        await LoadSchedules();
+        if (response.IsSuccessStatusCode)
+        {
+            Notify.Success($"{schedule.TenantName} marked as paid.");
+            await LoadSchedules();
+        }
+        else
+        {
+            Notify.Error("Failed to mark rent schedule as paid.");
+        }
     }
 
     private async Task ApplyLateFee(RentScheduleDto schedule)
     {
-        await Http.PostAsync($"api/rentschedules/{schedule.ScheduleID}/apply-late-fee", null);
+        var response = await Http.PostAsync($"api/rentschedules/{schedule.ScheduleID}/apply-late-fee", null);
 
-        Notify.Success($"Late fee applied to {schedule.TenantName}.");
-
-        await LoadSchedules();
+        if (response.IsSuccessStatusCode)
+        {
+            Notify.Success($"Late fee applied to {schedule.TenantName}.");
+            await LoadSchedules();
+        }
+        else
+        {
+            Notify.Error("Failed to apply late fee.");
+        }
     }
 
     private async Task SendReminder(RentScheduleDto schedule)
@@ -169,10 +272,22 @@ else
             MessageBody = $"Reminder sent to {schedule.TenantName} for {schedule.Balance:C}"
         };
 
-        await Http.PostAsJsonAsync("api/communications", dto);
+        var response = await Http.PostAsJsonAsync("api/communications", dto);
 
-        Notify.Success($"Reminder sent to {schedule.TenantName}.");
+        if (response.IsSuccessStatusCode)
+        {
+            Notify.Success($"Reminder sent to {schedule.TenantName}.");
+            await LoadSchedules();
+        }
+        else
+        {
+            Notify.Error("Failed to send reminder.");
+        }
+    }
 
-        await LoadSchedules();
+    private bool ContainsText(string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value) &&
+               value.Contains(searchText, StringComparison.OrdinalIgnoreCase);
     }
 }

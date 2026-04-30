@@ -1,0 +1,81 @@
+﻿@page "/login"
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject AuthTokenStore TokenStore
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h1>Admin Login</h1>
+
+<div class="auth-card">
+    <EditForm Model="loginModel" OnValidSubmit="LoginAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <label class="form-label">Email</label>
+        <InputText class="form-control mb-3" @bind-Value="loginModel.Email" />
+
+        <label class="form-label">Password</label>
+        <InputText type="password" class="form-control mb-3" @bind-Value="loginModel.Password" />
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <button class="btn btn-primary w-100" disabled="@isBusy">
+            @(isBusy ? "Signing in..." : "Login as Admin")
+        </button>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private AuthLoginRequestDto loginModel = new();
+
+    private string? errorMessage;
+    private bool isBusy;
+
+    private async Task LoginAsync()
+    {
+        errorMessage = null;
+        isBusy = true;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/auth/login", loginModel);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage = "Invalid admin credentials.";
+                return;
+            }
+
+            var auth = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+
+            if (auth == null || string.IsNullOrWhiteSpace(auth.Token))
+            {
+                errorMessage = "The API did not return a valid token.";
+                return;
+            }
+
+            await TokenStore.SaveAsync(auth);
+
+            if (AuthStateProvider is JwtAuthenticationStateProvider jwtProvider)
+            {
+                jwtProvider.NotifyUserAuthenticationChanged();
+            }
+
+            Nav.NavigateTo(string.IsNullOrWhiteSpace(ReturnUrl) ? "" : ReturnUrl);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Login failed: {ex.Message}";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+}

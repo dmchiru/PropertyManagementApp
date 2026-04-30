@@ -1,17 +1,28 @@
 ﻿@page "/maintenance"
+@using PropertyManagementApp.Shared
 @using PropertyManagementApp.Shared.DTOs
 @inject HttpClient Http
+@inject IJSRuntime JS
 @inject NotificationService Notify
 
-<h2 class="mb-4">Maintenance Dashboard</h2>
+<div class="page-header">
+    <div>
+        <h3>Maintenance</h3>
+        <p class="text-muted mb-0">Manage work orders, vendors, bids, and project status.</p>
+    </div>
 
-@if (projects == null)
+    <button class="btn btn-primary btn-sm" @onclick="ToggleCreate">
+        @(showForm ? "Cancel" : "Add Project")
+    </button>
+</div>
+
+@if (projects == null || properties == null)
 {
-    <p>Loading...</p>
+    <p><em>Loading...</em></p>
 }
 else
 {
-    <div class="dashboard-cards">
+    <div class="dashboard-cards compact-dashboard-cards">
         <div class="card">
             <h4>Total Projects</h4>
             <p>@projects.Count</p>
@@ -33,122 +44,155 @@ else
         </div>
     </div>
 
-    <div class="invoice-toolbar">
-        <button class="action-btn action-paid" @onclick="ToggleCreate">
-            @(showForm ? "Cancel" : "+ New Maintenance Project")
-        </button>
-    </div>
-
     @if (showForm)
     {
-        <div class="card p-3 mb-3">
-            <h4>Create Maintenance Project</h4>
+        <div class="compact-search-card">
+            <h5 class="mb-3">Create Maintenance Project</h5>
 
-            <input class="form-control mb-2"
-                   placeholder="Project Title"
-                   @bind="newProject.ProjectTitle" />
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Property</label>
+                    <select class="form-select form-select-sm" @bind="newProject.PropertyID">
+                        <option value="0">Choose a property</option>
 
-            <input class="form-control mb-2"
-                   placeholder="Assigned Vendor"
-                   @bind="newProject.AssignedVendor" />
+                        @foreach (var property in properties)
+                        {
+                            <option value="@property.PropertyID">
+                                @property.PropertyName - Unit @property.UnitNumber
+                            </option>
+                        }
+                    </select>
+                </div>
 
-            <input type="number"
-                   class="form-control mb-2"
-                   placeholder="Property ID"
-                   @bind="newProject.PropertyID" />
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Project Title</label>
+                    <input class="form-control form-control-sm"
+                           placeholder="Project Title"
+                           @bind="newProject.ProjectTitle" />
+                </div>
 
-            <input type="number"
-                   class="form-control mb-2"
-                   placeholder="Bid Amount"
-                   @bind="newProject.BidAmount" />
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Vendor</label>
+                    <input class="form-control form-control-sm"
+                           placeholder="Assigned Vendor"
+                           @bind="newProject.AssignedVendor" />
+                </div>
 
-            <button class="action-btn action-paid" @onclick="CreateProject">
-                Save Project
-            </button>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Bid Amount</label>
+                    <input type="number"
+                           class="form-control form-control-sm"
+                           placeholder="Bid Amount"
+                           @bind="newProject.BidAmount" />
+                </div>
+            </div>
+
+            <div class="mt-3 d-flex gap-2">
+                <button class="btn btn-success btn-sm" @onclick="CreateProject">
+                    Save Project
+                </button>
+
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ToggleCreate">
+                    Cancel
+                </button>
+            </div>
         </div>
     }
 
-    <table class="table modern-table">
-        <thead>
-            <tr>
-                <th>Project</th>
-                <th>Property</th>
-                <th>Vendor</th>
-                <th>Status</th>
-                <th>Bid Amount</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-
-        <tbody>
-            @foreach (var p in projects)
-            {
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+            <thead>
                 <tr>
-                    <td>@p.ProjectTitle</td>
-                    <td>@p.PropertyName</td>
-                    <td>@p.AssignedVendor</td>
+                    <th>Project</th>
+                    <th>Property</th>
+                    <th>Vendor</th>
+                    <th>Status</th>
+                    <th>Bid Amount</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
 
-                    <td>
-                        <span class="badge @GetStatusClass(p.Status)">
-                            @p.Status
-                        </span>
-                    </td>
+            <tbody>
+                @foreach (var project in projects)
+                {
+                    <tr>
+                        <td class="fw-semibold">@project.ProjectTitle</td>
+                        <td>@project.PropertyName</td>
+                        <td>@project.AssignedVendor</td>
 
-                    <td>@p.BidAmount.ToString("C")</td>
+                        <td>
+                            <span class="compact-pill @GetStatusClass(project.Status)">
+                                @project.Status
+                            </span>
+                        </td>
 
-                    <td>
-                        @if (p.Status == "Closed")
-                        {
-                            <span class="badge badge-success">Complete</span>
-                        }
-                        else
-                        {
-                            <div class="action-buttons">
-                                <a class="action-btn action-reminder"
-                                       href="/worklogs/@p.ProjectID">
-                                    View Logs
+                        <td class="fw-semibold">
+                            @project.BidAmount.ToString("C")
+                        </td>
+
+                        <td>
+                            <div class="compact-action-group">
+                                <a class="btn btn-sm btn-outline-secondary compact-action"
+                                       href="/worklogs/@project.ProjectID">
+                                    Logs
                                 </a>
 
-                                <button class="action-btn action-reminder"
-                                        @onclick="() => Start(p.ProjectID)">
-                                    Start Work
-                                </button>
+                                @if (project.Status != "Closed")
+                                {
+                                    <button class="btn btn-sm btn-outline-primary compact-action"
+                                            @onclick="() => Start(project.ProjectID)">
+                                        Start
+                                    </button>
 
-                                <button class="action-btn action-paid"
-                                        @onclick="() => Complete(p.ProjectID)">
-                                    Close
-                                </button>
+                                    <button class="btn btn-sm btn-outline-success compact-action"
+                                            @onclick="() => Complete(project.ProjectID)">
+                                        Close
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-secondary compact-action" disabled>
+                                        Complete
+                                    </button>
+                                }
                             </div>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }
 
 @code {
+    private const string SelectedPropertyKey = "propertyManagement.selectedPropertyId";
+
     private List<MaintenanceProjectDto>? projects;
+    private List<PropertyDto>? properties;
 
-    private bool showForm = false;
-
+    private bool showForm;
     private CreateMaintenanceProjectDto newProject = new();
 
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            projects = await Http.GetFromJsonAsync<List<MaintenanceProjectDto>>("api/maintenanceprojects");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.Message);
-        }
+        await Load();
+        await LoadSelectedPropertyAsync();
     }
 
     private async Task Load()
     {
-        projects = await Http.GetFromJsonAsync<List<MaintenanceProjectDto>>("api/maintenanceprojects");
+        projects = await Http.GetFromJsonAsync<List<MaintenanceProjectDto>>("api/maintenanceprojects") ?? new();
+        properties = await Http.GetFromJsonAsync<List<PropertyDto>>("api/properties") ?? new();
+    }
+
+    private async Task LoadSelectedPropertyAsync()
+    {
+        var savedValue = await JS.InvokeAsync<string?>("localStorage.getItem", SelectedPropertyKey);
+
+        if (int.TryParse(savedValue, out var propertyId) && propertyId > 0)
+        {
+            newProject.PropertyID = propertyId;
+        }
     }
 
     private void ToggleCreate()
@@ -158,15 +202,15 @@ else
 
     private async Task CreateProject()
     {
-        if (string.IsNullOrWhiteSpace(newProject.ProjectTitle))
+        if (newProject.PropertyID <= 0)
         {
-            Notify.Error("Project title is required.");
+            Notify.Error("Please choose a property.");
             return;
         }
 
-        if (newProject.PropertyID <= 0)
+        if (string.IsNullOrWhiteSpace(newProject.ProjectTitle))
         {
-            Notify.Error("Property ID is required.");
+            Notify.Error("Project title is required.");
             return;
         }
 
@@ -175,8 +219,11 @@ else
         if (response.IsSuccessStatusCode)
         {
             Notify.Success("Maintenance project created.");
+
             showForm = false;
             newProject = new CreateMaintenanceProjectDto();
+
+            await LoadSelectedPropertyAsync();
             await Load();
         }
         else
@@ -187,28 +234,44 @@ else
 
     private async Task Start(int id)
     {
-        await Http.PostAsync($"api/maintenanceprojects/{id}/start", null);
-        Notify.Success("Project moved to Work Order.");
-        await Load();
+        var response = await Http.PostAsync($"api/maintenanceprojects/{id}/start", null);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Notify.Success("Project moved to Work Order.");
+            await Load();
+        }
+        else
+        {
+            Notify.Error("Failed to start project.");
+        }
     }
 
     private async Task Complete(int id)
     {
-        await Http.PostAsync($"api/maintenanceprojects/{id}/complete", null);
-        Notify.Success("Project closed.");
-        await Load();
+        var response = await Http.PostAsync($"api/maintenanceprojects/{id}/complete", null);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Notify.Success("Project closed.");
+            await Load();
+        }
+        else
+        {
+            Notify.Error("Failed to close project.");
+        }
     }
 
     private string GetStatusClass(string? status)
     {
         return status switch
         {
-            "Closed" => "badge-success",
-            "Work Order" => "badge-warning",
-            "Invoiced" => "badge-warning",
-            "Approved" => "badge-warning",
-            "Bid" => "badge-default",
-            _ => "badge-default"
+            "Closed" => "pill-success",
+            "Work Order" => "pill-warning",
+            "Invoiced" => "pill-warning",
+            "Approved" => "pill-warning",
+            "Bid" => "pill-dark",
+            _ => "pill-muted"
         };
     }
 }

@@ -1,16 +1,26 @@
 ﻿@page "/invoicing"
 @using PropertyManagementApp.Shared.DTOs
 @inject HttpClient Http
+@inject NotificationService Notify
 
-<h2 class="mb-4">Invoicing Dashboard</h2>
+<div class="page-header">
+    <div>
+        <h3>Invoicing</h3>
+        <p class="text-muted mb-0">Create invoices, send them, track payments, and review exported records.</p>
+    </div>
+
+    <button class="btn btn-primary btn-sm" @onclick="CreateDemoInvoice">
+        Create Sample Invoice
+    </button>
+</div>
 
 @if (invoices == null)
 {
-    <p>Loading...</p>
+    <p><em>Loading...</em></p>
 }
 else
 {
-    <div class="dashboard-cards">
+    <div class="dashboard-cards compact-dashboard-cards">
         <div class="card">
             <h4>Total Invoiced</h4>
             <p>@TotalInvoiced.ToString("C")</p>
@@ -32,79 +42,154 @@ else
         </div>
     </div>
 
-    <div class="invoice-toolbar">
-        <button class="action-btn action-paid" @onclick="CreateDemoInvoice">
-            + Create Sample Invoice
-        </button>
+    <div class="compact-search-card">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-8">
+                <label class="form-label fw-semibold">Search Invoice</label>
+                <input class="form-control form-control-sm"
+                       placeholder="Search by invoice number, tenant, property, or status..."
+                       @bind="searchText"
+                       @bind:event="oninput" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Status Filter</label>
+                <select class="form-select form-select-sm" @bind="statusFilter">
+                    <option value="">All statuses</option>
+                    <option value="Draft">Draft</option>
+                    <option value="Sent">Sent</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Overdue">Overdue</option>
+                </select>
+            </div>
+        </div>
     </div>
 
-    <table class="table modern-table">
-        <thead>
-            <tr>
-                <th>Invoice #</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Property</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Exported</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
+    @if (!FilteredInvoices.Any())
+    {
+        <div class="alert alert-info">
+            No invoices found.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Invoice #</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Property</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Exported</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
 
-        <tbody>
-            @foreach (var invoice in invoices)
-            {
-                <tr>
-                    <td>#@invoice.InvoiceID</td>
-                    <td>@invoice.InvoiceDate.ToShortDateString()</td>
-                    <td>@invoice.TenantName</td>
-                    <td>@invoice.PropertyName</td>
-                    <td><b>@invoice.TotalAmount.ToString("C")</b></td>
+                <tbody>
+                    @foreach (var invoice in FilteredInvoices)
+                    {
+                        <tr>
+                            <td class="fw-semibold">#@invoice.InvoiceID</td>
+                            <td>@invoice.InvoiceDate.ToShortDateString()</td>
+                            <td>@invoice.TenantName</td>
+                            <td>@invoice.PropertyName</td>
 
-                    <td>
-                        <span class="badge @GetInvoiceStatusClass(invoice.Status)">
-                            @invoice.Status
-                        </span>
-                    </td>
+                            <td class="fw-semibold">
+                                @invoice.TotalAmount.ToString("C")
+                            </td>
 
-                    <td>@(invoice.IsExported ? "Yes" : "No")</td>
+                            <td>
+                                <span class="compact-pill @GetInvoiceStatusClass(invoice.Status)">
+                                    @invoice.Status
+                                </span>
+                            </td>
 
-                    <td>
-                        @if (invoice.Status == "Paid")
-                        {
-                            <span class="badge badge-success">Paid</span>
-                        }
-                        else
-                        {
-                            <div class="action-buttons">
-                                @if (invoice.Status == "Draft")
+                            <td>
+                                @if (invoice.IsExported)
                                 {
-                                    <button class="action-btn action-reminder"
-                                            @onclick="() => SendInvoice(invoice)">
-                                        Send
-                                    </button>
+                                    <span class="compact-pill pill-success">Yes</span>
                                 }
-                                else if (invoice.Status == "Sent")
+                                else
                                 {
-                                    <span class="badge badge-warning">Sent</span>
+                                    <span class="compact-pill pill-muted">No</span>
                                 }
+                            </td>
 
-                                <button class="action-btn action-paid"
-                                        @onclick="() => MarkInvoicePaid(invoice)">
-                                    Mark Paid
-                                </button>
-                            </div>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                            <td>
+                                <div class="compact-action-group">
+                                    @if (invoice.Status == "Paid")
+                                    {
+                                        <button class="btn btn-sm btn-secondary compact-action" disabled>
+                                            Paid
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        @if (invoice.Status == "Draft")
+                                        {
+                                            <button class="btn btn-sm btn-outline-primary compact-action"
+                                                    @onclick="() => SendInvoice(invoice)">
+                                                Send
+                                            </button>
+                                        }
+
+                                        @if (invoice.Status == "Sent")
+                                        {
+                                            <span class="compact-pill pill-warning">Sent</span>
+                                        }
+
+                                        <button class="btn btn-sm btn-outline-success compact-action"
+                                                @onclick="() => MarkInvoicePaid(invoice)">
+                                            Mark Paid
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 }
 
 @code {
     private List<InvoiceDto>? invoices;
+    private string searchText = string.Empty;
+    private string statusFilter = string.Empty;
+
+    private IEnumerable<InvoiceDto> FilteredInvoices
+    {
+        get
+        {
+            if (invoices == null)
+            {
+                return Enumerable.Empty<InvoiceDto>();
+            }
+
+            var query = invoices.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                query = query.Where(invoice =>
+                    string.Equals(invoice.Status, statusFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                query = query.Where(invoice =>
+                    ContainsText(invoice.InvoiceID.ToString()) ||
+                    ContainsText(invoice.TenantName) ||
+                    ContainsText(invoice.PropertyName) ||
+                    ContainsText(invoice.Status));
+            }
+
+            return query;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -113,7 +198,7 @@ else
 
     private async Task LoadInvoices()
     {
-        invoices = await Http.GetFromJsonAsync<List<InvoiceDto>>("api/invoices");
+        invoices = await Http.GetFromJsonAsync<List<InvoiceDto>>("api/invoices") ?? new();
     }
 
     private decimal TotalInvoiced => invoices?.Sum(x => x.TotalAmount) ?? 0;
@@ -131,10 +216,11 @@ else
     {
         return status switch
         {
-            "Paid" => "badge-success",
-            "Sent" => "badge-warning",
-            "Overdue" => "badge-danger",
-            _ => "badge-default"
+            "Paid" => "pill-success",
+            "Sent" => "pill-warning",
+            "Overdue" => "pill-warning",
+            "Draft" => "pill-dark",
+            _ => "pill-muted"
         };
     }
 
@@ -145,6 +231,7 @@ else
             x.TotalAmount == 350 &&
             x.Status == "Draft"))
         {
+            Notify.Error("A sample draft invoice already exists.");
             return;
         }
 
@@ -156,19 +243,52 @@ else
             Status = "Draft"
         };
 
-        await Http.PostAsJsonAsync("api/invoices", dto);
-        await LoadInvoices();
+        var response = await Http.PostAsJsonAsync("api/invoices", dto);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Notify.Success("Sample invoice created.");
+            await LoadInvoices();
+        }
+        else
+        {
+            Notify.Error("Failed to create invoice.");
+        }
     }
 
     private async Task SendInvoice(InvoiceDto invoice)
     {
-        await Http.PostAsync($"api/invoices/{invoice.InvoiceID}/send", null);
-        await LoadInvoices();
+        var response = await Http.PostAsync($"api/invoices/{invoice.InvoiceID}/send", null);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Notify.Success("Invoice sent.");
+            await LoadInvoices();
+        }
+        else
+        {
+            Notify.Error("Failed to send invoice.");
+        }
     }
 
     private async Task MarkInvoicePaid(InvoiceDto invoice)
     {
-        await Http.PostAsync($"api/invoices/{invoice.InvoiceID}/mark-paid", null);
-        await LoadInvoices();
+        var response = await Http.PostAsync($"api/invoices/{invoice.InvoiceID}/mark-paid", null);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Notify.Success("Invoice marked as paid.");
+            await LoadInvoices();
+        }
+        else
+        {
+            Notify.Error("Failed to mark invoice as paid.");
+        }
+    }
+
+    private bool ContainsText(string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value) &&
+               value.Contains(searchText, StringComparison.OrdinalIgnoreCase);
     }
 }

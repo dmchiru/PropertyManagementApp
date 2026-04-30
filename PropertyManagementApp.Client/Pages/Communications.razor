@@ -2,47 +2,164 @@
 @using PropertyManagementApp.Shared.DTOs
 @inject HttpClient Http
 
-<h2 class="mb-4">Communication Logs</h2>
+<div class="page-header">
+    <div>
+        <h3>Communications</h3>
+        <p class="text-muted mb-0">Review tenant reminders, notices, calls, emails, and SMS history.</p>
+    </div>
+</div>
 
 @if (logs == null)
 {
-    <p>Loading...</p>
+    <p><em>Loading...</em></p>
 }
 else
 {
-    <table class="table modern-table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Tenant</th>
-                <th>Channel</th>
-                <th>Template</th>
-                <th>Message</th>
-                <th>Sent By</th>
-            </tr>
-        </thead>
+    <div class="dashboard-cards compact-dashboard-cards">
+        <div class="card">
+            <h4>Total Logs</h4>
+            <p>@logs.Count</p>
+        </div>
 
-        <tbody>
-            @foreach (var log in logs)
-            {
-                <tr>
-                    <td>@log.SentAt.ToString("g")</td>
-                    <td>@log.TenantName</td>
-                    <td>@log.Channel</td>
-                    <td>@log.TemplateUsed</td>
-                    <td>@log.MessageBody</td>
-                    <td>@log.SentBy</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+        <div class="card success">
+            <h4>SMS</h4>
+            <p>@logs.Count(x => x.Channel == "SMS")</p>
+        </div>
+
+        <div class="card warning">
+            <h4>Email</h4>
+            <p>@logs.Count(x => x.Channel == "Email")</p>
+        </div>
+
+        <div class="card danger">
+            <h4>Calls</h4>
+            <p>@logs.Count(x => x.Channel == "Call")</p>
+        </div>
+    </div>
+
+    <div class="compact-search-card">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-8">
+                <label class="form-label fw-semibold">Search Communications</label>
+                <input class="form-control form-control-sm"
+                       placeholder="Search by tenant, channel, template, or message..."
+                       @bind="searchText"
+                       @bind:event="oninput" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Channel Filter</label>
+                <select class="form-select form-select-sm" @bind="channelFilter">
+                    <option value="">All channels</option>
+                    <option value="SMS">SMS</option>
+                    <option value="Email">Email</option>
+                    <option value="Call">Call</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    @if (!FilteredLogs.Any())
+    {
+        <div class="alert alert-info">
+            No communication logs found.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Tenant</th>
+                        <th>Channel</th>
+                        <th>Template</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var log in FilteredLogs)
+                    {
+                        <tr>
+                            <td>@log.SentAt.ToShortDateString()</td>
+
+                            <td class="fw-semibold">@log.TenantName</td>
+
+                            <td>
+                                <span class="compact-pill @GetChannelClass(log.Channel)">
+                                    @log.Channel
+                                </span>
+                            </td>
+
+                            <td>@log.TemplateUsed</td>
+
+                            <td class="communication-message-cell">
+                                @log.MessageBody
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 }
 
 @code {
     private List<CommunicationLogDto>? logs;
+    private string searchText = string.Empty;
+    private string channelFilter = string.Empty;
+
+    private IEnumerable<CommunicationLogDto> FilteredLogs
+    {
+        get
+        {
+            if (logs == null)
+            {
+                return Enumerable.Empty<CommunicationLogDto>();
+            }
+
+            var query = logs.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(channelFilter))
+            {
+                query = query.Where(log =>
+                    string.Equals(log.Channel, channelFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                query = query.Where(log =>
+                    ContainsText(log.TenantName) ||
+                    ContainsText(log.Channel) ||
+                    ContainsText(log.TemplateUsed) ||
+                    ContainsText(log.MessageBody));
+            }
+
+            return query.OrderByDescending(log => log.SentAt);
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        logs = await Http.GetFromJsonAsync<List<CommunicationLogDto>>("api/communications");
+        logs = await Http.GetFromJsonAsync<List<CommunicationLogDto>>("api/communications") ?? new();
+    }
+
+    private string GetChannelClass(string? channel)
+    {
+        return channel switch
+        {
+            "SMS" => "pill-success",
+            "Email" => "pill-warning",
+            "Call" => "pill-dark",
+            _ => "pill-muted"
+        };
+    }
+
+    private bool ContainsText(string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value) &&
+               value.Contains(searchText, StringComparison.OrdinalIgnoreCase);
     }
 }

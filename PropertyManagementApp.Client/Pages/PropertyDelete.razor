@@ -1,0 +1,120 @@
+﻿@page "/properties/delete/{PropertyID:int}"
+@using PropertyManagementApp.Shared.DTOs
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject NotificationService Notify
+@inject IJSRuntime JS
+
+<div class="page-header">
+    <div>
+        <h3>Delete Property</h3>
+        <p class="text-muted mb-0">Confirm before removing this property from the system.</p>
+    </div>
+
+    <a href="/properties" class="btn btn-outline-secondary btn-sm">
+        Back
+    </a>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger py-2">
+        @errorMessage
+    </div>
+}
+
+<div class="alert alert-danger py-2">
+    <strong>Warning:</strong>
+    This action cannot be undone.
+</div>
+
+@if (property == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="compact-details-card border-danger">
+        <dl class="row mb-0">
+            <dt class="col-sm-4 text-muted">Property Name</dt>
+            <dd class="col-sm-8 fw-semibold">@property.PropertyName</dd>
+
+            <dt class="col-sm-4 text-muted">Address</dt>
+            <dd class="col-sm-8">@property.Address</dd>
+
+            <dt class="col-sm-4 text-muted">Unit Number</dt>
+            <dd class="col-sm-8">
+                <span class="compact-pill pill-muted">@property.UnitNumber</span>
+            </dd>
+
+            <dt class="col-sm-4 text-muted">Monthly Rent</dt>
+            <dd class="col-sm-8 fw-semibold">@property.MonthlyRent.ToString("C")</dd>
+        </dl>
+    </div>
+
+    <div class="compact-form-actions">
+        <button class="btn btn-danger btn-sm" @onclick="DeletePropertyAsync" disabled="@isDeleting">
+            @(isDeleting ? "Deleting..." : "Yes, Delete")
+        </button>
+
+        <a href="/properties" class="btn btn-outline-secondary btn-sm">
+            Cancel
+        </a>
+    </div>
+}
+
+@code {
+    private const string SelectedPropertyKey = "propertyManagement.selectedPropertyId";
+
+    [Parameter]
+    public int PropertyID { get; set; }
+
+    private PropertyDto? property;
+    private string? errorMessage;
+    private bool isDeleting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        property = await Http.GetFromJsonAsync<PropertyDto>($"api/properties/{PropertyID}");
+    }
+
+    private async Task DeletePropertyAsync()
+    {
+        errorMessage = null;
+        isDeleting = true;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"api/properties/{PropertyID}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var selectedPropertyId = await JS.InvokeAsync<string?>("localStorage.getItem", SelectedPropertyKey);
+
+                if (selectedPropertyId == PropertyID.ToString())
+                {
+                    await JS.InvokeVoidAsync("localStorage.removeItem", SelectedPropertyKey);
+                }
+
+                Notify.Success("Property deleted successfully.");
+                Nav.NavigateTo("/properties");
+                return;
+            }
+
+            errorMessage = await response.Content.ReadAsStringAsync();
+
+            if (string.IsNullOrWhiteSpace(errorMessage))
+            {
+                errorMessage = "The property could not be deleted.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting property: {ex.Message}";
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+}

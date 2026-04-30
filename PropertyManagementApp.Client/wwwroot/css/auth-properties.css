@@ -1,0 +1,359 @@
+﻿.selected-property-row {
+    border-left: 5px solid #198754;
+}
+
+.auth-card {
+    max-width: 420px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.dashboard-option-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+    .dashboard-option-link:hover {
+        color: inherit;
+    }
+
+.dashboard-option-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+}
+
+    .dashboard-option-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+    }
+
+
+.logout-button {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    text-align: left;
+    padding: 0.5rem 0;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+    .logout-button:hover {
+        color: #dbeafe;
+        text-decoration: underline;
+    }
+
+
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+    .page-header h3 {
+        margin: 0;
+        font-weight: 700;
+    }
+
+.tenant-search-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+.compact-table {
+    font-size: 0.88rem;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+}
+
+    .compact-table thead th {
+        background: #1f2328;
+        color: #ffffff;
+        font-weight: 600;
+        padding: 0.55rem 0.7rem;
+        border-color: #343a40;
+    }
+
+    .compact-table tbody td {
+        padding: 0.45rem 0.7rem;
+        vertical-align: middle;
+        border-color: #e5e7eb;
+    }
+
+    .compact-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+.compact-pill {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.74rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pill-dark {
+    background: #1f2328;
+    color: #ffffff;
+}
+
+.pill-muted {
+    background: #6c757d;
+    color: #ffffff;
+}
+
+.compact-action-group {
+    display: flex;
+    justify-content: center;
+    gap: 0.35rem;
+    flex-wrap: nowrap;
+}
+
+.compact-action {
+    padding: 0.22rem 0.5rem;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+/* ================================
+   Global Compact UI Style
+   ================================ */
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+    .page-header h2,
+    .page-header h3 {
+        margin: 0;
+        font-weight: 700;
+    }
+
+    .page-header p {
+        font-size: 0.85rem;
+    }
+
+.card {
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+.form-control,
+.form-select {
+    font-size: 0.88rem;
+}
+
+.btn {
+    border-radius: 7px;
+}
+
+.btn-sm {
+    font-size: 0.78rem;
+    padding: 0.22rem 0.5rem;
+}
+
+.table {
+    font-size: 0.88rem;
+}
+
+    .table thead th {
+        background: #1f2328;
+        color: #ffffff;
+        font-weight: 600;
+        padding: 0.55rem 0.7rem;
+        border-color: #343a40;
+    }
+
+    .table tbody td {
+        padding: 0.45rem 0.7rem;
+        vertical-align: middle;
+        border-color: #e5e7eb;
+    }
+
+    .table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+.table-responsive {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.compact-action-group {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.compact-action {
+    padding: 0.22rem 0.5rem;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.compact-pill {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.74rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pill-dark {
+    background: #1f2328;
+    color: #ffffff;
+}
+
+.pill-muted {
+    background: #6c757d;
+    color: #ffffff;
+}
+
+.pill-success {
+    background: #198754;
+    color: #ffffff;
+}
+
+.pill-warning {
+    background: #f59e0b;
+    color: #111827;
+}
+
+.compact-search-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+/* Dashboard cards */
+.home-grid {
+    gap: 1rem;
+}
+
+.home-card {
+    padding: 1.1rem 1.25rem;
+    border-radius: 12px;
+    text-decoration: none;
+    color: inherit;
+}
+
+    .home-card h3 {
+        font-size: 1.1rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .home-card p {
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+
+.dashboard-cards .card,
+.dashboard-card,
+.stat-card {
+    padding: 1rem;
+}
+
+    .dashboard-cards h4,
+    .dashboard-card h4,
+    .stat-card h4 {
+        font-size: 0.95rem;
+    }
+
+    .dashboard-cards p,
+    .dashboard-card p,
+    .stat-card p {
+        font-size: 1.05rem;
+    }
+
+
+
+.compact-dashboard-cards {
+    margin-bottom: 1rem;
+}
+
+    .compact-dashboard-cards .card {
+        padding: 0.85rem 1rem;
+    }
+
+    .compact-dashboard-cards h4 {
+        font-size: 0.9rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .compact-dashboard-cards p {
+        font-size: 1rem;
+        margin-bottom: 0;
+        font-weight: 700;
+    }
+
+
+.communication-message-cell {
+    max-width: 460px;
+    white-space: normal;
+    font-size: 0.84rem;
+}
+
+
+.compact-details-card {
+    max-width: 760px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+    .compact-details-card dt,
+    .compact-details-card dd {
+        font-size: 0.88rem;
+        padding-top: 0.2rem;
+        padding-bottom: 0.2rem;
+    }
+
+
+.compact-form-card {
+    max-width: 760px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+    .compact-form-card label {
+        font-size: 0.84rem;
+        margin-bottom: 0.25rem;
+    }
+
+.compact-form-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}

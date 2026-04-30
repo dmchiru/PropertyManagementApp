@@ -1,0 +1,117 @@
+﻿@page "/tenants/delete/{TenantID:int}"
+@using PropertyManagementApp.Shared
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject NotificationService Notify
+
+<div class="page-header">
+    <div>
+        <h3>Delete Tenant</h3>
+        <p class="text-muted mb-0">Confirm before removing this tenant from the system.</p>
+    </div>
+
+    <a href="/tenants" class="btn btn-outline-secondary btn-sm">
+        Back
+    </a>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger py-2">
+        @errorMessage
+    </div>
+}
+
+<div class="alert alert-danger py-2">
+    <strong>Warning:</strong>
+    This action cannot be undone.
+</div>
+
+@if (tenant == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="compact-details-card border-danger">
+        <dl class="row mb-0">
+            <dt class="col-sm-4 text-muted">Name</dt>
+            <dd class="col-sm-8 fw-semibold">@tenant.FirstName @tenant.LastName</dd>
+
+            <dt class="col-sm-4 text-muted">Email</dt>
+            <dd class="col-sm-8">@tenant.Email</dd>
+
+            <dt class="col-sm-4 text-muted">Phone</dt>
+            <dd class="col-sm-8">@tenant.PhoneNumber</dd>
+
+            <dt class="col-sm-4 text-muted">Property</dt>
+            <dd class="col-sm-8">
+                <span class="compact-pill pill-dark">@tenant.PropertyName</span>
+            </dd>
+
+            <dt class="col-sm-4 text-muted">Unit</dt>
+            <dd class="col-sm-8">
+                <span class="compact-pill pill-muted">@tenant.UnitNumber</span>
+            </dd>
+        </dl>
+    </div>
+
+    <div class="compact-form-actions">
+        <button class="btn btn-danger btn-sm"
+                @onclick="DeleteTenantAsync"
+                disabled="@isDeleting">
+            @(isDeleting ? "Deleting..." : "Yes, Delete")
+        </button>
+
+        <a href="/tenants" class="btn btn-outline-secondary btn-sm">
+            Cancel
+        </a>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int TenantID { get; set; }
+
+    private TenantDto? tenant;
+    private string? errorMessage;
+    private bool isDeleting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        tenant = await Http.GetFromJsonAsync<TenantDto>($"api/tenants/{TenantID}");
+    }
+
+    private async Task DeleteTenantAsync()
+    {
+        isDeleting = true;
+        errorMessage = null;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"api/tenants/{TenantID}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                Notify.Success("Tenant deleted successfully.");
+                Nav.NavigateTo("/tenants");
+                return;
+            }
+
+            errorMessage = await response.Content.ReadAsStringAsync();
+
+            if (string.IsNullOrWhiteSpace(errorMessage))
+            {
+                errorMessage = "The tenant could not be deleted.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting tenant: {ex.Message}";
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+}

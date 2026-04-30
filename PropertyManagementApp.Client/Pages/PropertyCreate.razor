@@ -1,0 +1,142 @@
+﻿@page "/properties/create"
+@using PropertyManagementApp.Shared.DTOs
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject NotificationService Notify
+
+<div class="page-header">
+    <div>
+        <h3>Create Property</h3>
+        <p class="text-muted mb-0">Add a new property, unit, and monthly rent amount.</p>
+    </div>
+
+    <a href="/properties" class="btn btn-outline-secondary btn-sm">
+        Back
+    </a>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger py-2">
+        @errorMessage
+    </div>
+}
+
+<div class="compact-form-card">
+    <EditForm Model="property" OnValidSubmit="CreatePropertyAsync">
+        <DataAnnotationsValidator />
+
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Property Name</label>
+                <InputText class="form-control form-control-sm"
+                           placeholder="Property name"
+                           @bind-Value="property.PropertyName" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Unit Number</label>
+                <InputText class="form-control form-control-sm"
+                           placeholder="Unit number"
+                           @bind-Value="property.UnitNumber" />
+            </div>
+
+            <div class="col-md-8">
+                <label class="form-label fw-semibold">Address</label>
+                <InputText class="form-control form-control-sm"
+                           placeholder="Property address"
+                           @bind-Value="property.Address" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Monthly Rent</label>
+                <InputNumber class="form-control form-control-sm"
+                             @bind-Value="property.MonthlyRent" />
+            </div>
+        </div>
+
+        <div class="compact-form-actions">
+            <button type="submit" class="btn btn-success btn-sm" disabled="@isSaving">
+                @(isSaving ? "Saving..." : "Create Property")
+            </button>
+
+            <a href="/properties" class="btn btn-outline-secondary btn-sm">
+                Cancel
+            </a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private PropertyDto property = new();
+    private string? errorMessage;
+    private bool isSaving;
+
+    private async Task CreatePropertyAsync()
+    {
+        errorMessage = ValidateProperty();
+
+        if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/properties", property);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Notify.Success("Property created successfully.");
+                Nav.NavigateTo("/properties");
+                return;
+            }
+
+            errorMessage = await GetErrorMessageAsync(response);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating property: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private string? ValidateProperty()
+    {
+        if (string.IsNullOrWhiteSpace(property.PropertyName))
+        {
+            return "Property name is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(property.Address))
+        {
+            return "Address is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(property.UnitNumber))
+        {
+            return "Unit number is required.";
+        }
+
+        if (property.MonthlyRent <= 0)
+        {
+            return "Monthly rent must be greater than zero.";
+        }
+
+        return null;
+    }
+
+    private async Task<string> GetErrorMessageAsync(HttpResponseMessage response)
+    {
+        var content = await response.Content.ReadAsStringAsync();
+
+        return string.IsNullOrWhiteSpace(content)
+            ? "The property could not be saved."
+            : content;
+    }
+}

@@ -1,0 +1,78 @@
+﻿@page "/tenants/details/{TenantID:int}"
+@using PropertyManagementApp.Shared
+@inject HttpClient Http
+
+<div class="page-header">
+    <div>
+        <h3>Tenant Details</h3>
+        <p class="text-muted mb-0">Review tenant contact information and assigned unit.</p>
+    </div>
+
+    <a href="/tenants" class="btn btn-outline-secondary btn-sm">
+        Back
+    </a>
+</div>
+
+@if (tenant == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="compact-details-card">
+        <dl class="row mb-0">
+            <dt class="col-sm-4 text-muted">First Name</dt>
+            <dd class="col-sm-8 fw-semibold">@tenant.FirstName</dd>
+
+            <dt class="col-sm-4 text-muted">Last Name</dt>
+            <dd class="col-sm-8 fw-semibold">@tenant.LastName</dd>
+
+            <dt class="col-sm-4 text-muted">Email</dt>
+            <dd class="col-sm-8">
+                <a href="mailto:@tenant.Email">@tenant.Email</a>
+            </dd>
+
+            <dt class="col-sm-4 text-muted">Phone Number</dt>
+            <dd class="col-sm-8">@tenant.PhoneNumber</dd>
+
+            <dt class="col-sm-4 text-muted">Property</dt>
+            <dd class="col-sm-8">
+                <span class="compact-pill pill-dark">@tenant.PropertyName</span>
+            </dd>
+
+            <dt class="col-sm-4 text-muted">Address</dt>
+            <dd class="col-sm-8">@tenant.Address</dd>
+
+            <dt class="col-sm-4 text-muted">Unit</dt>
+            <dd class="col-sm-8">
+                <span class="compact-pill pill-muted">@tenant.UnitNumber</span>
+            </dd>
+        </dl>
+    </div>
+
+    <div class="compact-form-actions">
+        <a href="/tenants/edit/@tenant.TenantID" class="btn btn-primary btn-sm">
+            Edit
+        </a>
+
+        <a href="/tenants/delete/@tenant.TenantID" class="btn btn-outline-danger btn-sm">
+            Delete
+        </a>
+
+        <a href="/rent-records/tenant/@tenant.TenantID" class="btn btn-outline-secondary btn-sm">
+            View Ledger
+        </a>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int TenantID { get; set; }
+
+    private TenantDto? tenant;
+
+    protected override async Task OnInitializedAsync()
+    {
+        tenant = await Http.GetFromJsonAsync<TenantDto>($"api/tenants/{TenantID}");
+    }
+}

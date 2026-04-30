@@ -1,4 +1,8 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@inject AuthTokenStore TokenStore
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Property Manager</a>
     </div>
@@ -6,65 +10,92 @@
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+<div class="nav-scrollable">
     <nav class="flex-column">
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        Dashboard
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span>
-                Dashboard
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="properties">
+                        Properties
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="tenants">
-                <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span>
-                Tenants
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="tenants">
+                        Tenants
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="rent-collection">
-                <span class="bi bi-cash-stack-nav-menu" aria-hidden="true"></span>
-                Rent Collection
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="rent-collection">
+                        Rent Collection
+                    </NavLink>
+                </div>
 
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="rent-records">
+                        Rent Records
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="rent-records">
-                <span class="bi bi-journal-text" aria-hidden="true"></span>
-                Rent Records
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="invoicing">
+                        Invoicing
+                    </NavLink>
+                </div>
 
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="maintenance">
+                        Maintenance
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="invoicing">
-                <span class="bi bi-receipt" aria-hidden="true"></span>
-                Invoicing
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="eviction-prep">
+                        Eviction Prep
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="maintenance">
-                <span class="bi bi-tools" aria-hidden="true"></span>
-                Maintenance
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="communications">
+                        Communications
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="eviction-prep">
-                <span class="bi bi-file-earmark-text" aria-hidden="true"></span>
-                Eviction Prep
-            </NavLink>
-        </div>
+                <div class="nav-item px-3 mt-3">
+                    <button type="button" class="logout-button" @onclick="LogoutAsync">
+                        Logout
+                    </button>
+                </div>
+            </Authorized>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="communications">
-                <span class="bi bi-chat-dots"></span> Communications
-            </NavLink>
-        </div>
-
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="login">
+                        Admin Login
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
     </nav>
 </div>
+
+@code {
+    private async Task LogoutAsync()
+    {
+        await TokenStore.ClearAsync();
+
+        if (AuthStateProvider is JwtAuthenticationStateProvider jwtProvider)
+        {
+            jwtProvider.NotifyUserLogout();
+        }
+
+        Nav.NavigateTo("login", replace: true);
+    }
+}
