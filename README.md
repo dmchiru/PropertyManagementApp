@@ -60,27 +60,4 @@ The application includes an ASP.NET Core Web API backend, a Blazor WebAssembly f
 - Visual Studio
 - GitHub
 
-## Project Structure
 
-```text
-PropertyManagementApp
-│
-├── PropertyManagementApp.Api
-│   ├── Controllers
-│   ├── Data
-│   ├── Models
-│   ├── Security
-│   ├── Services
-│   └── Program.cs
-│
-├── PropertyManagementApp.Client
-│   ├── Auth
-│   ├── Layout
-│   ├── Pages
-│   ├── Services
-│   └── wwwroot
-│
-├── PropertyManagementApp.Shared
-│   └── DTOs
-│
-└── PropertyManagementApp.Api.slnx
