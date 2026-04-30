@@ -272,7 +272,7 @@ This project uses demo credentials for academic testing and grading. In a produc
 
 ## AI Assistance Disclosure
 
-AI assistance was used as guided support to understand JWT authentication, Blazor WebAssembly integration, Web API security, CRUD workflow, and Visual Studio/GitHub setup. The implementation was reviewed, edited, tested, and validated by the student.
+AI tools were used as a guided learning resource to clarify technical concepts and support the development process. We were responsible for implementing, reviewing, modifying, testing, and validating the final project.
 
 ## Author
 
