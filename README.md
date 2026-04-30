@@ -124,26 +124,53 @@ These credentials allow the user to log in as an administrator and access the pr
 PropertyManagementApp
 │
 ├── PropertyManagementApp.Api
+│   ├── Connected Services
+│   ├── Dependencies
+│   ├── Properties
 │   ├── Controllers
 │   ├── Data
 │   ├── Models
 │   ├── Security
 │   ├── Services
-│   └── Program.cs
+│   ├── appsettings.Development.json
+│   ├── appsettings.json
+│   ├── Program.cs
+│   ├── PropertyManagementApp.Api.http
+│   └── WeatherForecast.cs
 │
 ├── PropertyManagementApp.Client
+│   ├── Connected Services
+│   ├── Dependencies
+│   ├── Properties
+│   ├── wwwroot
 │   ├── Auth
 │   ├── Layout
 │   ├── Pages
+│   │   └── RentRecords
 │   ├── Services
-│   └── wwwroot
+│   ├── Shared
+│   ├── _Imports.razor
+│   ├── App.razor
+│   └── Program.cs
 │
 ├── PropertyManagementApp.Shared
+│   ├── Dependencies
 │   └── DTOs
 │
 ├── PropertyManagementDB_Script.sql
+├── SQLQuery1.sql
+├── SQLQuery2.sql
 └── PropertyManagementApp.Api.slnx
 ```
+
+## Authors
+
+Dianelsa Chiru  
+Monica Monterrosa  
+
+CS458.001202620  
+Advanced Programming in C#  
+University of Southern Indiana
 
 ## How to Run the Project
 
@@ -249,6 +276,11 @@ AI assistance was used as guided support to understand JWT authentication, Blazo
 
 ## Author
 
-Dianelsa Chiru and Monica Monterrosa
-CS458 
+## Authors
+
+Dianelsa Chiru  
+Monica Monterrosa  
+
+CS458  
+Advanced Programming in C#  
 University of Southern Indiana
