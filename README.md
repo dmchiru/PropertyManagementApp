@@ -249,7 +249,6 @@ AI assistance was used as guided support to understand JWT authentication, Blazo
 
 ## Author
 
-Dianelsa Chiru
-Monica Monterrosa
+Dianelsa Chiru and Monica Monterrosa
 CS458 
 University of Southern Indiana
